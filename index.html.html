@@ -198,6 +198,7 @@
         <option value="dvd">💿 Films</option>
         <option value="craft">🧶 Crafts</option>
         <option value="game">🎮 Games</option>
+        <option value="podcast">🎙️ Podcasts</option>
         <option value="other">✨ Other</option>
       </select>
       <select id="filter-status" onchange="renderList()">
@@ -227,6 +228,7 @@
         <button data-v="dvd">💿 Film</button>
         <button data-v="craft">🧶 Craft</button>
         <button data-v="game">🎮 Game</button>
+        <button data-v="podcast">🎙️ Podcast</button>
         <button data-v="other">✨ Other</button>
       </div>
 
@@ -244,6 +246,7 @@
       <div class="choice-row" id="f-format" data-value="physical">
         <button data-v="physical">📦 Physical</button>
         <button data-v="digital">☁️ Digital / streaming</button>
+        <button data-v="audio">🎧 Audio</button>
       </div>
 
       <label class="field">Status</label>
@@ -367,9 +370,10 @@ function persist() {
   localStorage.setItem(CHOICE_KEY, JSON.stringify(choices));
 }
 
-const TYPE_EMOJI = { book:'📖', tv:'📺', dvd:'💿', craft:'🧶', game:'🎮', other:'✨' };
-const TYPE_LABEL = { book:'Book', tv:'TV show', dvd:'Film', craft:'Craft', game:'Game', other:'Other' };
+const TYPE_EMOJI = { book:'📖', tv:'📺', dvd:'💿', craft:'🧶', game:'🎮', podcast:'🎙️', other:'✨' };
+const TYPE_LABEL = { book:'Book', tv:'TV show', dvd:'Film', craft:'Craft', game:'Game', podcast:'Podcast', other:'Other' };
 const PLATFORM_LABEL = { computer:'Computer', switch:'Switch', ps4:'PS4', board:'Board game' };
+const FORMAT_LABEL = { physical:'📦 physical', digital:'☁️ digital', audio:'🎧 audio' };
 const STARTER_TAGS = ['cozy','funny','exciting','brainy','brain off','hands busy','relaxing','creative','feel-good','quick win','spooky','competitive'];
 const STATUS_LABEL = { want:'Want to try', owned:'Owned, not started', progress:'In progress', finished:'Finished' };
 const STATUS_CLASS = { want:'b-status-want', owned:'b-status-owned', progress:'b-status-progress', finished:'b-status-finished' };
@@ -586,7 +590,7 @@ function itemCard(it, extraHtml='') {
     <div class="item-emoji">${TYPE_EMOJI[it.type]}</div>
     <div class="item-body">
       <p class="item-title">${esc(it.title)}</p>
-      <div class="item-meta">${TYPE_LABEL[it.type]}${it.platform ? ' · ' + PLATFORM_LABEL[it.platform] : ''} · ${it.format === 'physical' ? '📦 physical' : '☁️ digital'} · ${EFFORT_LABEL[it.effort]} · ⏱ ${TIME_LABEL[it.time]}${it.rating ? ' · <span style="color:#e8a33d">' + '★'.repeat(it.rating) + '</span>' : ''}</div>
+      <div class="item-meta">${TYPE_LABEL[it.type]}${it.platform ? ' · ' + PLATFORM_LABEL[it.platform] : ''} · ${FORMAT_LABEL[it.format] || FORMAT_LABEL.digital} · ${EFFORT_LABEL[it.effort]} · ⏱ ${TIME_LABEL[it.time]}${it.rating ? ' · <span style="color:#e8a33d">' + '★'.repeat(it.rating) + '</span>' : ''}</div>
       ${it.notes ? `<div class="item-meta">📝 ${esc(it.notes)}</div>` : ''}
       <div class="badges">
         <span class="badge ${STATUS_CLASS[it.status]}">${STATUS_LABEL[it.status]}</span>
@@ -660,7 +664,9 @@ const TYPE_WORDS = {
   book: ['read','book','reading','novel'],
   craft: ['craft','make','making','create','hands','sew','knit','crochet','paint','build','stitch','puzzle','jigsaw','lego'],
   game: ['game','play','gaming','video game','videogame'],
+  podcast: ['podcast','pod','listen','listening'],
 };
+const LISTEN_WORDS = ['listen','listening','audio','audiobook','ears'];
 const PLATFORM_WORDS = {
   computer: ['computer','pc','steam','laptop'],
   switch: ['switch'],
@@ -714,6 +720,10 @@ function runMood() {
       // platform intent ("something on the switch")
       if (it.type === 'game' && it.platform && PLATFORM_WORDS[it.platform].some(w => q.includes(w))) {
         score += 3; why.push(`it's on ${PLATFORM_LABEL[it.platform]}`);
+      }
+      // listening intent ("something to listen to") — audiobooks and podcasts
+      if (LISTEN_WORDS.some(w => q.includes(w)) && (it.format === 'audio' || it.type === 'podcast')) {
+        score += 2; why.push('you can listen to it');
       }
       // effort
       if (wantEffort && it.effort === wantEffort) { score += 2; why.push(`${EFFORT_LABEL[it.effort]} fits your energy`); }
