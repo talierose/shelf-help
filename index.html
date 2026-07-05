@@ -818,7 +818,10 @@ function parseTime(q) {
   if ((m = q.match(/(\d+)\s*(?:minutes?|mins?|m\b)/))) return parseInt(m[1]);
   if (/half an hour|half hour/.test(q)) return 30;
   if (/quarter of an hour/.test(q)) return 15;
-  if (/couple of hours/.test(q)) return 120;
+  if (/couple of hours|couple hours/.test(q)) return 120;
+  // vague-but-generous stretches of time
+  if (/a few hours|few hours|several hours|many hours|hours to (?:kill|spare|myself|play)/.test(q)) return 180;
+  if (/lots of time|loads of time|plenty of time|all afternoon|all morning|all night|whole afternoon|whole morning/.test(q)) return 360;
   if (/an hour|one hour/.test(q)) return 60;
   if (/all day|all evening|whole day|whole evening|ages/.test(q)) return 600;
   if (/quick|not long|a bit|few min/.test(q)) return 20;
@@ -852,6 +855,12 @@ function runMood() {
       const matched = it.tags.filter(t =>
         q.includes(t) || t.split(/\s+/).some(tw => qWords.includes(tw)));
       if (matched.length) { score += matched.length * 4; why.push(`matches your mood: ${matched.join(', ')}`); }
+      // direct hits in the title or notes (e.g. searching "D&D" finds it in the notes)
+      const hay = (it.title + ' ' + (it.notes || '')).toLowerCase();
+      const textHits = [];
+      if (q.length >= 2 && hay.includes(q)) textHits.push(q);
+      qWords.forEach(w => { if (!textHits.includes(w) && hay.includes(w)) textHits.push(w); });
+      if (textHits.length) { score += 1; why.push(`mentions "${textHits.join('", "')}"`); }
       // type intent
       if (wantTypes.size && wantTypes.has(it.type)) { score += 2; why.push(`it's a ${TYPE_LABEL[it.type].toLowerCase()}, like you asked`); }
       if (wantTypes.size && !wantTypes.has(it.type)) score -= 2;
@@ -869,9 +878,20 @@ function runMood() {
       // time: films need one sitting; books/TV/crafts can be paused, so only a soft penalty
       if (availTime !== null) {
         const timeStr = availTime >= 60 ? Math.round(availTime/60*10)/10 + ' hr' : availTime + ' min';
-        if (it.time <= availTime) { score += 1; why.push(`a session fits your ${timeStr}`); }
-        else if (it.type === 'dvd') { score -= 4; }
-        else { score -= 1; why.push(`won't finish a session in ${timeStr}, but you can chip away at it`); }
+        const bigChunk = availTime >= 120;   // "a few hours" or more free
+        if (it.time <= availTime) {
+          score += 1; why.push(`a session fits your ${timeStr}`);
+          // a long stretch of free time is perfect for a longer sitting
+          if (bigChunk && it.time >= 120) { score += 1; why.push(`enough time to really get into it`); }
+        } else if (it.time === 999) {
+          // a "big project" isn't a single sitting — it's ideal when you've got a long stretch
+          if (bigChunk) { score += 2; why.push(`a big project — perfect for a long stretch`); }
+          else { score -= 0.5; why.push(`a big project — better when you've more time`); }
+        } else if (it.type === 'dvd') {
+          score -= 4;   // a film really does need one unbroken sitting
+        } else {
+          score -= 1; why.push(`won't finish a session in ${timeStr}, but you can chip away at it`);
+        }
       }
       // finish what you started
       if (it.status === 'progress') { score += 2; why.push(`you're already partway through${it.notes ? ' — ' + it.notes.toLowerCase() : ''}`); }
