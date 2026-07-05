@@ -4,47 +4,114 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Shelf Help — your media & craft shelf</title>
-<meta name="theme-color" content="#7c5cbf">
+<meta name="theme-color" content="#f4efe6">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;0,700;1,500;1,600&display=swap" rel="stylesheet">
+<script>
+  // set the theme before styles paint, so there's no flash of the wrong colours
+  try {
+    var t = localStorage.getItem('shelfhelp-theme') ||
+      (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.dataset.theme = t;
+  } catch (e) {}
+</script>
 <style>
+  /* ============ Shelf Help theme — "cozy library" ============
+     All colours flow through these variables. Light = aged paper +
+     deep literary purple + old gold. Dark = warm ink, muted accents.
+     Theme is set as data-theme="light|dark" on <html> (see theme JS). */
   :root {
-    --bg: #faf6f0;
-    --card: #ffffff;
-    --ink: #3a3335;
-    --ink-soft: #7a6f72;
-    --accent: #7c5cbf;
-    --accent-soft: #ece5f8;
-    --green: #4a9d6e;
-    --green-soft: #e2f2e9;
-    --amber: #d98e32;
-    --amber-soft: #faeeda;
-    --blue: #4a7fb5;
-    --blue-soft: #e3edf6;
-    --pink: #c25d8a;
-    --pink-soft: #f7e5ed;
-    --border: #e8e0d8;
+    color-scheme: light;
+    --bg: #f4efe6;
+    --card: #fdfaf3;
+    --ink: #332b2e;
+    --ink-soft: #80746e;
+    --accent: #5b4a8a;
+    --accent-soft: #ebe5f3;
+    --on-accent: #fdfaf3;
+    --green: #47795a;
+    --green-soft: #e3ecdf;
+    --amber: #996f2e;
+    --amber-soft: #f2e7d0;
+    --blue: #4a6a94;
+    --blue-soft: #e3e9f1;
+    --pink: #a45874;
+    --pink-soft: #f4e3e9;
+    --border: #e3d9c9;
+    --finished: #94897f;
+    --finished-soft: #ebe5d9;
+    --star-off: #d5c9b6;
+    --star-on: #b9882e;
+    --danger: #a35050;
+    --danger-border: #dcbcb4;
     --radius: 14px;
-    --shadow: 0 2px 8px rgba(58,51,53,.07);
+    --shadow: 0 1px 2px rgba(51,43,46,.05), 0 5px 18px rgba(51,43,46,.06);
+    --grain: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="240" height="240"%3E%3Cfilter id="n"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/%3E%3CfeColorMatrix values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0"/%3E%3C/filter%3E%3Crect width="240" height="240" filter="url(%23n)"/%3E%3C/svg%3E');
+    --grain-opacity: .6;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #211b1f;
+    --card: #2a2329;
+    --ink: #e9e1d4;
+    --ink-soft: #a2958d;
+    --accent: #b4a4de;
+    --accent-soft: #3a3050;
+    --on-accent: #241d2c;
+    --green: #90bd9c;
+    --green-soft: #2c392e;
+    --amber: #d4ab6c;
+    --amber-soft: #40331f;
+    --blue: #94abcd;
+    --blue-soft: #2c3546;
+    --pink: #cd8ca6;
+    --pink-soft: #422c35;
+    --border: #3d3439;
+    --finished: #8d8188;
+    --finished-soft: #322b30;
+    --star-off: #574b51;
+    --star-on: #d9aa52;
+    --danger: #cf8b84;
+    --danger-border: #5c3f3c;
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 6px 20px rgba(0,0,0,.3);
+    --grain: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="240" height="240"%3E%3Cfilter id="n"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/%3E%3CfeColorMatrix values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.04 0"/%3E%3C/filter%3E%3Crect width="240" height="240" filter="url(%23n)"/%3E%3C/svg%3E');
+    --grain-opacity: .45;
   }
   * { box-sizing: border-box; }
   body {
     margin: 0; background: var(--bg); color: var(--ink);
     font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
     font-size: 16px; line-height: 1.5;
+    transition: background .25s ease, color .25s ease;
   }
+  /* a whisper of paper grain over everything */
+  body::before {
+    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 200;
+    background-image: var(--grain); opacity: var(--grain-opacity);
+  }
+  h1, h2 { font-family: "Lora", Georgia, serif; }
   header {
-    text-align: center; padding: 22px 16px 6px;
+    text-align: center; padding: 24px 16px 6px; position: relative;
   }
-  header h1 { margin: 0; font-size: 1.7rem; letter-spacing: -.5px; }
-  header h1 .logo { color: var(--accent); }
-  header p { margin: 4px 0 0; color: var(--ink-soft); font-size: .95rem; }
+  header h1 { margin: 0; font-size: 1.85rem; letter-spacing: 0; font-weight: 700; }
+  header h1 .logo { width: 36px; height: 30px; vertical-align: -4px; }
+  header p { margin: 5px 0 0; color: var(--ink-soft); font-size: .95rem; font-family: "Lora", Georgia, serif; font-style: italic; }
+  .theme-toggle {
+    position: absolute; top: 12px; right: 12px;
+    width: 44px; height: 44px; border-radius: 50%;
+    border: 1px solid var(--border); background: var(--card); color: var(--ink);
+    font-size: 1.1rem; cursor: pointer; box-shadow: var(--shadow); line-height: 1;
+  }
 
   nav {
     display: flex; justify-content: center; gap: 8px;
     padding: 14px 12px; flex-wrap: wrap;
     position: sticky; top: 0; background: var(--bg); z-index: 10;
+    transition: background .25s ease;
   }
   nav button {
     border: 1px solid var(--border); background: var(--card); color: var(--ink);
@@ -52,7 +119,7 @@
     box-shadow: var(--shadow); transition: all .15s;
   }
   nav button:hover { transform: translateY(-1px); }
-  nav button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  nav button.active { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 
   main { max-width: 760px; margin: 0 auto; padding: 8px 16px 60px; }
   .screen { display: none; }
@@ -63,22 +130,24 @@
     background: var(--card); border: 1px solid var(--border);
     border-radius: var(--radius); box-shadow: var(--shadow);
     padding: 16px; margin-bottom: 12px;
+    transition: background .25s ease, border-color .25s ease;
   }
 
   /* ---- forms ---- */
   label.field { display: block; margin: 14px 0 4px; font-weight: 600; font-size: .92rem; }
   label.field .hint { font-weight: 400; color: var(--ink-soft); }
-  input[type=text], textarea, select {
+  input[type=text], input[type=email], textarea, select {
     width: 100%; padding: 10px 12px; border: 1px solid var(--border);
-    border-radius: 10px; font-size: 1rem; font-family: inherit; background: #fff; color: var(--ink);
+    border-radius: 10px; font-size: 1rem; font-family: inherit; background: var(--card); color: var(--ink);
   }
+  input::placeholder, textarea::placeholder { color: var(--ink-soft); opacity: .7; }
   input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
   .choice-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
   .choice-row button {
-    border: 1px solid var(--border); background: #fff; color: var(--ink);
+    border: 1px solid var(--border); background: var(--card); color: var(--ink);
     padding: 8px 14px; border-radius: 999px; cursor: pointer; font-size: .95rem;
   }
-  .choice-row button.selected { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .choice-row button.selected { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
   .tag-suggest { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .tag-suggest button {
     border: 1px dashed var(--border); background: var(--bg); color: var(--ink-soft);
@@ -87,16 +156,16 @@
   .tag-suggest button:hover { border-color: var(--accent); color: var(--accent); }
   .stars button {
     background: none; border: none; font-size: 1.7rem; cursor: pointer;
-    color: #cfc6bb; padding: 0 3px; line-height: 1;
+    color: var(--star-off); padding: 0 3px; line-height: 1;
   }
-  .stars button.on { color: #e8a33d; }
+  .stars button.on { color: var(--star-on); }
   .notify-check { display: flex; align-items: center; gap: 8px; cursor: pointer; }
   .notify-check input { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
   .notify-hint { color: var(--ink-soft); font-size: .82rem; margin: 6px 2px 0; }
   .b-notify { background: var(--amber-soft); color: var(--amber); font-weight: 500; }
 
   .btn-primary {
-    background: var(--accent); color: #fff; border: none; border-radius: 12px;
+    background: var(--accent); color: var(--on-accent); border: none; border-radius: 12px;
     padding: 13px 22px; font-size: 1.05rem; cursor: pointer; margin-top: 18px; width: 100%;
     font-weight: 600;
   }
@@ -105,7 +174,7 @@
     background: none; border: 1px solid var(--border); border-radius: 10px;
     padding: 8px 14px; cursor: pointer; color: var(--ink-soft); font-size: .9rem;
   }
-  .btn-danger { border-color: #e3b6b6; color: #b05252; }
+  .btn-danger { border-color: var(--danger-border); color: var(--danger); }
 
   /* ---- list ---- */
   .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; align-items: center; }
@@ -114,7 +183,7 @@
   .item-card { display: flex; gap: 12px; align-items: flex-start; }
   .item-emoji { font-size: 1.7rem; line-height: 1.2; }
   .item-body { flex: 1; min-width: 0; }
-  .item-title { font-weight: 700; font-size: 1.05rem; margin: 0; }
+  .item-title { font-weight: 600; font-size: 1.1rem; margin: 0; font-family: "Lora", Georgia, serif; }
   .item-meta { color: var(--ink-soft); font-size: .85rem; margin-top: 2px; }
   .badges { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
   .badge {
@@ -123,11 +192,11 @@
   .b-status-want { background: var(--blue-soft); color: var(--blue); }
   .b-status-owned { background: var(--amber-soft); color: var(--amber); }
   .b-status-progress { background: var(--green-soft); color: var(--green); }
-  .b-status-finished { background: #eee; color: #999; }
+  .b-status-finished { background: var(--finished-soft); color: var(--finished); }
   .b-tag { background: var(--accent-soft); color: var(--accent); font-weight: 500; }
   .item-actions { display: flex; flex-direction: column; gap: 6px; }
   .item-actions button {
-    border: 1px solid var(--border); background: #fff; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--card); border-radius: 8px;
     padding: 5px 10px; cursor: pointer; font-size: .8rem; color: var(--ink-soft); white-space: nowrap;
   }
   .item-actions button:hover { border-color: var(--accent); color: var(--accent); }
@@ -137,12 +206,12 @@
 
   /* ---- mood screen ---- */
   .mood-box-wrap { text-align: center; padding: 10px 0 4px; }
-  .mood-box-wrap h2 { margin: 6px 0 2px; font-size: 1.35rem; }
+  .mood-box-wrap h2 { margin: 6px 0 2px; font-size: 1.45rem; }
   .mood-box-wrap p { color: var(--ink-soft); margin: 0 0 14px; }
   .mood-input-row { display: flex; gap: 8px; }
   .mood-input-row input { flex: 1; padding: 13px 16px; font-size: 1.05rem; border-radius: 12px; }
   .mood-input-row button {
-    background: var(--accent); color: #fff; border: none; border-radius: 12px;
+    background: var(--accent); color: var(--on-accent); border: none; border-radius: 12px;
     padding: 0 22px; font-size: 1.05rem; cursor: pointer; font-weight: 600;
   }
   .mood-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 14px; }
@@ -153,7 +222,10 @@
   .mood-chips button:hover { border-color: var(--accent); color: var(--accent); }
   .suggestion { border-left: 4px solid var(--accent); }
   .suggestion .why { color: var(--ink-soft); font-size: .85rem; margin-top: 6px; font-style: italic; }
-  .section-label { font-weight: 700; font-size: .85rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); margin: 22px 4px 8px; }
+  .section-label {
+    font-family: "Lora", Georgia, serif; font-style: italic; font-weight: 500;
+    font-size: 1.05rem; color: var(--ink-soft); margin: 24px 4px 8px;
+  }
 
   .empty {
     text-align: center; color: var(--ink-soft); padding: 30px 16px;
@@ -165,7 +237,7 @@
 
   .toast {
     position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
-    background: var(--ink); color: #fff; padding: 10px 20px; border-radius: 999px;
+    background: var(--ink); color: var(--bg); padding: 10px 20px; border-radius: 999px;
     font-size: .92rem; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 50;
   }
   .toast.show { opacity: 1; }
@@ -186,7 +258,39 @@
   .sync-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; }
   .sync-dot.ok { background: var(--green); }
   .sync-dot.syncing { background: var(--amber); }
-  .sync-dot.error { background: #c05252; }
+  .sync-dot.error { background: var(--danger); }
+
+  /* ---- whimsy: small, calm touches of fun ---- */
+  header h1 .logo { display: inline-block; }
+  header h1:hover .logo { animation: wobble .5s ease; }
+  @keyframes wobble { 0% { transform: rotate(0); } 30% { transform: rotate(7deg); } 60% { transform: rotate(-7deg); } 100% { transform: rotate(0); } }
+
+  .item-emoji { display: inline-block; transform: rotate(-8deg); transition: transform .25s cubic-bezier(.34,1.56,.64,1); }
+  .card:hover .item-emoji { transform: rotate(4deg) scale(1.15); }
+
+  button:active { transform: scale(.95); }
+  .choice-row button.selected, .nav button.active { animation: pop .25s cubic-bezier(.34,1.56,.64,1); }
+  .stars button.on { display: inline-block; animation: pop .25s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes pop { 0% { transform: scale(.85); } 60% { transform: scale(1.1); } 100% { transform: scale(1); } }
+
+  .item-actions .btn-choose:hover { animation: wiggle .4s ease; }
+  @keyframes wiggle { 25% { transform: rotate(-2.5deg); } 75% { transform: rotate(2.5deg); } }
+
+  .mood-input-row button:hover { transform: scale(1.05) rotate(-2deg); transition: transform .2s cubic-bezier(.34,1.56,.64,1); }
+  .theme-toggle { transition: transform .35s cubic-bezier(.34,1.56,.64,1); }
+  .theme-toggle:hover { transform: rotate(-20deg) scale(1.08); }
+
+  .empty .big { display: inline-block; animation: floaty 3.2s ease-in-out infinite; }
+  @keyframes floaty { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-7px) rotate(4deg); } }
+
+  .toast.show { animation: toast-in .4s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes toast-in { 0% { transform: translateX(-50%) translateY(16px) rotate(-1.5deg); } 100% { transform: translateX(-50%) translateY(0); } }
+
+  .b-tag-alt { background: var(--pink-soft); color: var(--pink); font-weight: 500; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
 
   @media (max-width: 520px) {
     .item-actions { flex-direction: row; }
@@ -198,7 +302,8 @@
 <body>
 
 <header>
-  <h1><span class="logo">📚</span> Shelf Help</h1>
+  <button id="theme-toggle" class="theme-toggle" onclick="toggleTheme()" aria-label="Switch between light and dark mode">🌙</button>
+  <h1><svg class="logo" viewBox="0 0 42 34" aria-hidden="true"><rect x="2" y="10" width="7" height="22" rx="2" fill="var(--accent)"></rect><rect x="11" y="4" width="7" height="28" rx="2" fill="var(--star-on)"></rect><rect x="20" y="9" width="7" height="23" rx="2" fill="var(--green)"></rect><rect x="27" y="6" width="7" height="26" rx="2" fill="var(--pink)" transform="rotate(12 30 32)"></rect></svg> Shelf Help</h1>
   <p>Everything you own, want, or are halfway through — in one place.</p>
 </header>
 
@@ -613,17 +718,19 @@ function cancelFinish() { finishingId = null; showScreen('list'); }
 
 /* ================= list ================= */
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+// each tag keeps a consistent colour (purple or pink) based on its text — a little variety, no meaning attached
+function tagHue(t) { let h = 0; for (const c of t) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h % 2 ? 'b-tag-alt' : 'b-tag'; }
 
 function itemCard(it, extraHtml='') {
   return `<div class="card item-card ${extraHtml?'suggestion':''}">
     <div class="item-emoji">${TYPE_EMOJI[it.type]}</div>
     <div class="item-body">
       <p class="item-title">${esc(it.title)}</p>
-      <div class="item-meta">${TYPE_LABEL[it.type]}${it.platform ? ' · ' + PLATFORM_LABEL[it.platform] : ''} · ${FORMAT_LABEL[it.format] || FORMAT_LABEL.digital} · ${EFFORT_LABEL[it.effort]} · ⏱ ${TIME_LABEL[it.time]}${it.rating ? ' · <span style="color:#e8a33d">' + '★'.repeat(it.rating) + '</span>' : ''}</div>
+      <div class="item-meta">${TYPE_LABEL[it.type]}${it.platform ? ' · ' + PLATFORM_LABEL[it.platform] : ''} · ${FORMAT_LABEL[it.format] || FORMAT_LABEL.digital} · ${EFFORT_LABEL[it.effort]} · ⏱ ${TIME_LABEL[it.time]}${it.rating ? ' · <span style="color:var(--star-on)">' + '★'.repeat(it.rating) + '</span>' : ''}</div>
       ${it.notes ? `<div class="item-meta">📝 ${esc(it.notes)}</div>` : ''}
       <div class="badges">
         <span class="badge ${STATUS_CLASS[it.status]}">${STATUS_LABEL[it.status]}</span>
-        ${it.tags.map(t => `<span class="badge b-tag">${esc(t)}</span>`).join('')}
+        ${it.tags.map(t => `<span class="badge ${tagHue(t)}">${esc(t)}</span>`).join('')}
         ${it.notify ? `<span class="badge b-notify">🔔 ${esc(it.notifyWords || 'new releases')}</span>` : ''}
       </div>
       ${extraHtml}
@@ -946,6 +1053,24 @@ function schedulePush() {
   pushTimer = setTimeout(pushRemote, 1500);   // debounce rapid edits
 }
 
+/* ================= theme (light / dark) ================= */
+const THEME_KEY = 'shelfhelp-theme';   // set only when she picks manually; otherwise we follow the system
+const themeMedia = window.matchMedia('(prefers-color-scheme: dark)');
+function currentTheme() {
+  return localStorage.getItem(THEME_KEY) || (themeMedia.matches ? 'dark' : 'light');
+}
+function applyTheme() {
+  const t = currentTheme();
+  document.documentElement.dataset.theme = t;
+  document.getElementById('theme-toggle').textContent = t === 'dark' ? '☀️' : '🌙';
+  document.querySelector('meta[name="theme-color"]').setAttribute('content', t === 'dark' ? '#211b1f' : '#f4efe6');
+}
+function toggleTheme() {
+  localStorage.setItem(THEME_KEY, currentTheme() === 'dark' ? 'light' : 'dark');
+  applyTheme();
+}
+themeMedia.addEventListener('change', () => { if (!localStorage.getItem(THEME_KEY)) applyTheme(); });
+
 /* ================= misc ================= */
 let toastTimer;
 function toast(msg) {
@@ -959,6 +1084,7 @@ load();
 showScreen(activeItems().length ? 'mood' : 'list');
 renderList();
 renderTagSuggestions();
+applyTheme();
 initSync();
 </script>
 </body>
