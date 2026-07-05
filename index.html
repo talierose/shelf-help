@@ -166,11 +166,30 @@
   }
   .toast.show { opacity: 1; }
 
+  .sync-bar {
+    max-width: 760px; margin: 0 auto; padding: 0 16px 6px;
+    display: flex; gap: 8px; align-items: center; justify-content: center;
+    flex-wrap: wrap; font-size: .88rem; color: var(--ink-soft);
+  }
+  .sync-bar input[type=email] {
+    padding: 7px 12px; border: 1px solid var(--border); border-radius: 999px;
+    font-size: .88rem; width: 210px;
+  }
+  .sync-bar button {
+    border: 1px solid var(--border); background: var(--card); color: var(--accent);
+    padding: 7px 14px; border-radius: 999px; cursor: pointer; font-size: .88rem;
+  }
+  .sync-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; }
+  .sync-dot.ok { background: var(--green); }
+  .sync-dot.syncing { background: var(--amber); }
+  .sync-dot.error { background: #c05252; }
+
   @media (max-width: 520px) {
     .item-actions { flex-direction: row; }
     .item-card { flex-wrap: wrap; }
   }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -184,6 +203,8 @@
   <button id="nav-add" onclick="showScreen('add')">➕ Add item</button>
   <button id="nav-mood" onclick="showScreen('mood')">✨ What should I do?</button>
 </nav>
+
+<div id="sync-bar" class="sync-bar" style="display:none"></div>
 
 <main>
 
@@ -368,7 +389,11 @@ function load() {
 function persist() {
   localStorage.setItem(STORE_KEY, JSON.stringify(items));
   localStorage.setItem(CHOICE_KEY, JSON.stringify(choices));
+  schedulePush();   // also send to the cloud shortly, if signed in
 }
+// items with deleted:true are "tombstones" — kept so a deletion on one
+// device isn't undone by a sync from another device that still has the item
+function activeItems() { return items.filter(i => !i.deleted); }
 
 const TYPE_EMOJI = { book:'📖', tv:'📺', dvd:'💿', craft:'🧶', game:'🎮', podcast:'🎙️', other:'✨' };
 const TYPE_LABEL = { book:'Book', tv:'TV show', dvd:'Film', craft:'Craft', game:'Game', podcast:'Podcast', other:'Other' };
@@ -446,7 +471,7 @@ function setChoice(rowId, value) {
 /* ================= add / edit ================= */
 function allTags() {
   const s = new Set();
-  items.forEach(i => i.tags.forEach(t => s.add(t)));
+  activeItems().forEach(i => i.tags.forEach(t => s.add(t)));
   return [...s].sort();
 }
 function renderTagSuggestions() {
@@ -534,7 +559,7 @@ function cancelEdit() { resetForm(); showScreen('list'); }
 function deleteItem(id) {
   const it = items.find(i => i.id === id);
   if (!confirm(`Delete "${it.title}"?`)) return;
-  items = items.filter(i => i.id !== id);
+  it.deleted = true; it.updated = Date.now();   // tombstone, so the deletion syncs
   persist(); renderList(); toast('Deleted');
 }
 /* ================= "this one" — choosing something to do ================= */
@@ -612,7 +637,8 @@ function renderList() {
   const q = document.getElementById('search').value.trim().toLowerCase();
   const ft = document.getElementById('filter-type').value;
   const fs = document.getElementById('filter-status').value;
-  let shown = items.filter(i =>
+  const active = activeItems();
+  let shown = active.filter(i =>
     (!ft || i.type === ft) &&
     (!fs || i.status === fs) &&
     (!q || i.title.toLowerCase().includes(q) || i.tags.some(t => t.includes(q)) || (i.notes||'').toLowerCase().includes(q))
@@ -621,10 +647,10 @@ function renderList() {
   shown.sort((a,b) => order[a.status] - order[b.status] || b.updated - a.updated);
 
   const container = document.getElementById('list-container');
-  document.getElementById('count-line').textContent = items.length
-    ? `${shown.length} of ${items.length} item${items.length===1?'':'s'}` : '';
+  document.getElementById('count-line').textContent = active.length
+    ? `${shown.length} of ${active.length} item${active.length===1?'':'s'}` : '';
 
-  if (!items.length) {
+  if (!active.length) {
     container.innerHTML = `<div class="empty">
       <div class="big">🌱</div>
       <p>Your shelf is empty. Add your first book, show, or craft kit!</p>
@@ -691,7 +717,8 @@ function parseTime(q) {
 function runMood() {
   const q = document.getElementById('mood-input').value.trim().toLowerCase();
   const resultsEl = document.getElementById('mood-results');
-  if (!items.length) {
+  const active = activeItems();
+  if (!active.length) {
     resultsEl.innerHTML = `<div class="empty"><div class="big">🌱</div><p>Add some items to your shelf first, then I can make suggestions!</p></div>`;
     return;
   }
@@ -706,7 +733,7 @@ function runMood() {
 
   const qWords = q.replace(/[^a-z0-9\s-]/g,'').split(/\s+/).filter(w => w.length > 2);
 
-  const scored = items
+  const scored = active
     .filter(i => i.status !== 'finished')
     .map(it => {
       let score = 0; const why = [];
@@ -748,8 +775,8 @@ function runMood() {
 
   if (!q) {
     // no query: just show in-progress + a random owned pick
-    const inProg = items.filter(i => i.status === 'progress');
-    const owned = items.filter(i => i.status === 'owned');
+    const inProg = active.filter(i => i.status === 'progress');
+    const owned = active.filter(i => i.status === 'owned');
     let html = '';
     if (inProg.length) html += `<div class="section-label">Finish what you started</div>` + inProg.map(i => itemCard(i)).join('');
     if (owned.length) {
@@ -812,6 +839,109 @@ function importData(ev) {
   ev.target.value = '';
 }
 
+/* ================= cloud sync (Supabase) =================
+   Data model: one row per user in table `shelves`, holding the whole
+   shelf as a JSON blob. Merge strategy: per-item newest-wins by
+   `updated`; deletions survive via tombstones; choices are unioned. */
+const SUPABASE_URL = 'https://qhqnufukdtgcrunlfrsj.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_DPCYkm8roknATBwORlb1Kg_KfdKnrM7';
+let sb = null, syncUser = null, pushTimer = null, syncState = 'off';
+
+function syncConfigured() { return SUPABASE_URL.startsWith('https://') && window.supabase; }
+
+async function initSync() {
+  if (!syncConfigured()) return;
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const { data: { session } } = await sb.auth.getSession();
+  syncUser = session ? session.user : null;
+  sb.auth.onAuthStateChange((_event, s) => {
+    const wasOut = !syncUser;
+    syncUser = s ? s.user : null;
+    renderSyncBar();
+    if (syncUser && wasOut) pullMergePush();
+  });
+  renderSyncBar();
+  if (syncUser) await pullMergePush();
+}
+
+function renderSyncBar() {
+  const bar = document.getElementById('sync-bar');
+  if (!syncConfigured()) { bar.style.display = 'none'; return; }
+  bar.style.display = 'flex';
+  if (!syncUser) {
+    bar.innerHTML = `<span>Sync across your devices:</span>
+      <input type="email" id="sync-email" placeholder="your email"
+        onkeydown="if(event.key==='Enter')sendLoginLink()">
+      <button onclick="sendLoginLink()">Send login link</button>`;
+  } else {
+    const dot = `<span class="sync-dot ${syncState === 'error' ? 'error' : syncState === 'syncing' ? 'syncing' : 'ok'}"></span>`;
+    const label = syncState === 'error' ? 'sync problem — changes saved on this device'
+      : syncState === 'syncing' ? 'syncing…' : 'synced';
+    bar.innerHTML = `<span>${dot}${label} · ${esc(syncUser.email)}</span>
+      <button onclick="signOutSync()">sign out</button>`;
+  }
+}
+function setSyncState(s) { syncState = s; if (syncUser) renderSyncBar(); }
+
+async function sendLoginLink() {
+  const email = document.getElementById('sync-email').value.trim();
+  if (!email) { toast('Type your email first 🙂'); return; }
+  const { error } = await sb.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: location.origin + location.pathname }
+  });
+  toast(error ? 'Problem: ' + error.message : 'Check your email and tap the login link 📧');
+}
+async function signOutSync() {
+  await sb.auth.signOut();
+  toast('Signed out — your data stays on this device');
+}
+
+function mergeRemote(remote) {
+  const byId = new Map(items.map(i => [i.id, i]));
+  (remote.items || []).forEach(r => {
+    const local = byId.get(r.id);
+    if (!local || (r.updated || 0) > (local.updated || 0)) byId.set(r.id, r);
+  });
+  items = [...byId.values()];
+  const seen = new Set(choices.map(c => c.id + '|' + c.ts));
+  (remote.choices || []).forEach(c => {
+    if (c.id && c.ts && !seen.has(c.id + '|' + c.ts)) choices.push(c);
+  });
+}
+
+async function pullMergePush() {
+  if (!sb || !syncUser) return;
+  setSyncState('syncing');
+  try {
+    const { data, error } = await sb.from('shelves')
+      .select('data').eq('user_id', syncUser.id).maybeSingle();
+    if (error) throw error;
+    if (data && data.data) mergeRemote(data.data);
+    localStorage.setItem(STORE_KEY, JSON.stringify(items));
+    localStorage.setItem(CHOICE_KEY, JSON.stringify(choices));
+    renderList();
+    await pushRemote();
+  } catch (e) { setSyncState('error'); }
+}
+
+async function pushRemote() {
+  if (!sb || !syncUser) return;
+  setSyncState('syncing');
+  const { error } = await sb.from('shelves').upsert({
+    user_id: syncUser.id,
+    data: { items, choices },
+    updated_at: new Date().toISOString()
+  });
+  setSyncState(error ? 'error' : 'ok');
+}
+
+function schedulePush() {
+  if (!sb || !syncUser) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(pushRemote, 1500);   // debounce rapid edits
+}
+
 /* ================= misc ================= */
 let toastTimer;
 function toast(msg) {
@@ -822,9 +952,10 @@ function toast(msg) {
 }
 
 load();
-showScreen(items.length ? 'mood' : 'list');
+showScreen(activeItems().length ? 'mood' : 'list');
 renderList();
 renderTagSuggestions();
+initSync();
 </script>
 </body>
 </html>
