@@ -1,2 +1,2 @@
 # shelf-help
-hello, this is the README
+What will I do next?
