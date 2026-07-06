@@ -389,15 +389,17 @@
         <button data-v="audio">🎧 Audio</button>
       </div>
 
-      <label class="field" for="f-release">Release date <span class="hint">— only for things that aren't out yet; hidden from suggestions until then</span></label>
-      <input type="date" id="f-release">
-
       <label class="field">Status</label>
       <div class="choice-row" id="f-status" data-value="owned">
         <button data-v="want">Want to try</button>
         <button data-v="owned">Owned, not started</button>
         <button data-v="progress">In progress</button>
         <button data-v="finished">Finished</button>
+      </div>
+
+      <div id="release-wrap" style="display:none">
+        <label class="field" for="f-release">Release date <span class="hint">— if it isn't out yet; hidden from suggestions until release day</span></label>
+        <input type="date" id="f-release">
       </div>
 
       <div id="finished-extras" style="display:none">
@@ -571,9 +573,11 @@ function updatePlatformVisibility() {
   document.getElementById('platform-wrap').style.display = isGame ? 'block' : 'none';
 }
 function updateFinishedExtras() {
-  // rating + notify only appear once something is Finished (Natalie's request)
-  const done = document.getElementById('f-status').dataset.value === 'finished';
-  document.getElementById('finished-extras').style.display = done ? 'block' : 'none';
+  // rating + notify only appear once something is Finished; release date only
+  // for Want-to-try (any other status means it's obviously already out)
+  const status = document.getElementById('f-status').dataset.value;
+  document.getElementById('finished-extras').style.display = status === 'finished' ? 'block' : 'none';
+  document.getElementById('release-wrap').style.display = status === 'want' ? 'block' : 'none';
 }
 ['f-rating','fin-rating'].forEach(id => {
   document.getElementById(id).addEventListener('click', e => {
@@ -657,7 +661,8 @@ function saveItem() {
     time: parseInt(document.getElementById('f-time').dataset.value),
     tags: document.getElementById('f-tags').value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean),
     notes: document.getElementById('f-notes').value.trim(),
-    releaseDate: document.getElementById('f-release').value || null,
+    releaseDate: document.getElementById('f-status').dataset.value === 'want'
+      ? (document.getElementById('f-release').value || null) : null,
     rating: parseInt(document.getElementById('f-rating').dataset.value) || 0,
     notify: document.getElementById('f-notify').checked,
     notifyWords: document.getElementById('f-notify-words').value.trim(),
@@ -1180,12 +1185,18 @@ async function checkReleases(force = false) {
   if (force) toast(freshAlerts().length ? 'Found ' + freshAlerts().length + ' thing(s) 🔔' : 'Nothing new right now');
 }
 
+function watchSource(i) {
+  if (i.type === 'tv') return { what: i.title, where: 'next episodes checked on TVmaze', auto: true };
+  if (i.type === 'book' && i.notifyWords) return { what: i.notifyWords, where: 'new books this year checked on Open Library', auto: true };
+  if (i.type === 'dvd' && i.notifyWords) return { what: i.notifyWords, where: 'new films by this director checked on iTunes', auto: true };
+  if (i.notifyWords) return { what: i.notifyWords, where: 'can\'t be auto-checked — use the search button', auto: false };
+  return { what: i.title, where: 'no keywords set — ✏️ edit the item and add some (e.g. the author\'s name)', auto: false };
+}
+
 function renderNews() {
   const el = document.getElementById('news-list');
   if (!el) return;
   const fresh = freshAlerts();
-  const kw = activeItems().filter(i =>
-    i.notify && i.notifyWords && !['tv','book','dvd'].includes(i.type));
   let html = '';
   if (fresh.length) {
     html += fresh.map(a => `<div class="card item-card suggestion">
@@ -1205,18 +1216,21 @@ function renderNews() {
   } else {
     html += `<div class="empty"><div class="big">🔕</div><p>Nothing new right now. Tick 🔔 on things when you finish them (or via ✏️ edit) and news about them lands here.</p></div>`;
   }
-  if (kw.length) {
-    html += `<div class="section-label">Keyword watches — tap to search the web</div>` +
-      kw.map(i => `<div class="card item-card">
-        <div class="item-emoji">🔍</div>
+  const watching = activeItems().filter(i => i.notify);
+  if (watching.length) {
+    html += `<div class="section-label">What I'm watching for you</div>` +
+      watching.map(i => {
+        const s = watchSource(i);
+        return `<div class="card item-card">
+        <div class="item-emoji">${s.auto ? '🔭' : '🔍'}</div>
         <div class="item-body">
-          <p class="item-title">${esc(i.notifyWords)}</p>
-          <div class="item-meta">from "${esc(i.title)}" — this kind can't be auto-checked</div>
+          <p class="item-title">${esc(s.what)}</p>
+          <div class="item-meta">from "${esc(i.title)}" · ${s.where}</div>
         </div>
         <div class="item-actions">
-          <button onclick="window.open('https://www.google.com/search?q=' + encodeURIComponent('${esc(i.notifyWords).replace(/'/g, "\\'")} new ${yrNow()}'), '_blank')">🔍 search</button>
+          <button onclick="window.open('https://www.google.com/search?q=' + encodeURIComponent('${esc(s.what).replace(/'/g, "\\'")} new ${yrNow()}'), '_blank')">🔍 search</button>
         </div>
-      </div>`).join('');
+      </div>`; }).join('');
   }
   el.innerHTML = html;
 }
