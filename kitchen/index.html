@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shelf Help: Kitchen</title>
+<meta name="theme-color" content="#f4efe6">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;0,700;1,500&display=swap" rel="stylesheet">
+<script>
+  // set the theme before styles paint, so there's no flash of the wrong colours
+  try {
+    var t = localStorage.getItem('shelfhelp-theme') ||
+      (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.dataset.theme = t;
+  } catch (e) {}
+</script>
+<style>
+  /* Same "cozy library" theme as Shelf Help, with the green as the kitchen accent */
+  :root {
+    color-scheme: light;
+    --bg: #f4efe6; --card: #fdfaf3; --ink: #332b2e; --ink-soft: #80746e;
+    --accent: #47795a; --accent-soft: #e3ecdf; --on-accent: #fdfaf3;
+    --purple: #5b4a8a; --purple-soft: #ebe5f3;
+    --amber: #996f2e; --amber-soft: #f2e7d0;
+    --pink: #a45874; --pink-soft: #f4e3e9;
+    --border: #e3d9c9; --danger: #a35050; --danger-soft: #f0e0dc; --danger-border: #dcbcb4;
+    --radius: 14px;
+    --shadow: 0 1px 2px rgba(51,43,46,.05), 0 5px 18px rgba(51,43,46,.06);
+    --grain: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="240" height="240"%3E%3Cfilter id="n"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/%3E%3CfeColorMatrix values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0"/%3E%3C/filter%3E%3Crect width="240" height="240" filter="url(%23n)"/%3E%3C/svg%3E');
+    --grain-opacity: .6;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #211b1f; --card: #2a2329; --ink: #e9e1d4; --ink-soft: #a2958d;
+    --accent: #90bd9c; --accent-soft: #2c392e; --on-accent: #1d2620;
+    --purple: #b4a4de; --purple-soft: #3a3050;
+    --amber: #d4ab6c; --amber-soft: #40331f;
+    --pink: #cd8ca6; --pink-soft: #422c35;
+    --border: #3d3439; --danger: #cf8b84; --danger-soft: #40302d; --danger-border: #5c3f3c;
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 6px 20px rgba(0,0,0,.3);
+    --grain: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="240" height="240"%3E%3Cfilter id="n"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/%3E%3CfeColorMatrix values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.04 0"/%3E%3C/filter%3E%3Crect width="240" height="240" filter="url(%23n)"/%3E%3C/svg%3E');
+    --grain-opacity: .45;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+    font-size: 16px; line-height: 1.5;
+    transition: background .25s ease, color .25s ease;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 200;
+    background-image: var(--grain); opacity: var(--grain-opacity);
+  }
+  h1, h2 { font-family: "Lora", Georgia, serif; }
+  header { text-align: center; padding: 24px 16px 6px; position: relative; }
+  header h1 { margin: 0; font-size: 1.85rem; font-weight: 700; }
+  header p { margin: 5px 0 0; color: var(--ink-soft); font-size: .95rem; font-family: "Lora", Georgia, serif; font-style: italic; }
+  .theme-toggle {
+    position: absolute; top: 12px; right: 12px; width: 44px; height: 44px; border-radius: 50%;
+    border: 1px solid var(--border); background: var(--card); color: var(--ink);
+    font-size: 1.1rem; cursor: pointer; box-shadow: var(--shadow); line-height: 1;
+  }
+  nav {
+    display: flex; justify-content: center; gap: 8px; padding: 14px 12px; flex-wrap: wrap;
+    position: sticky; top: 0; background: var(--bg); z-index: 10;
+  }
+  nav button {
+    border: 1px solid var(--border); background: var(--card); color: var(--ink);
+    padding: 10px 16px; border-radius: 999px; font-size: .98rem; cursor: pointer;
+    box-shadow: var(--shadow); transition: all .15s;
+  }
+  nav button:hover { transform: translateY(-1px); }
+  nav button.active { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  main { max-width: 720px; margin: 0 auto; padding: 8px 16px 60px; }
+  .screen { display: none; }
+  .screen.active { display: block; animation: fade .2s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px);} to { opacity: 1; transform: none;} }
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 16px; margin-bottom: 12px;
+  }
+  label.field { display: block; margin: 14px 0 4px; font-weight: 600; font-size: .92rem; }
+  label.field .hint { font-weight: 400; color: var(--ink-soft); }
+  input, select, textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--border);
+    border-radius: 10px; font-size: 1rem; font-family: inherit; background: var(--card); color: var(--ink);
+  }
+  input::placeholder { color: var(--ink-soft); opacity: .7; }
+  input:focus, select:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+  .btn-primary {
+    background: var(--accent); color: var(--on-accent); border: none; border-radius: 12px;
+    padding: 13px 22px; font-size: 1.05rem; cursor: pointer; margin-top: 18px; width: 100%; font-weight: 600;
+  }
+  .btn-primary:hover { filter: brightness(1.08); }
+  .btn-quiet {
+    background: none; border: 1px solid var(--border); border-radius: 10px;
+    padding: 8px 14px; cursor: pointer; color: var(--ink-soft); font-size: .9rem;
+  }
+  .tag-suggest { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .tag-suggest button {
+    border: 1px dashed var(--border); background: var(--bg); color: var(--ink-soft);
+    padding: 4px 12px; border-radius: 999px; cursor: pointer; font-size: .85rem;
+  }
+  .tag-suggest button:hover { border-color: var(--accent); color: var(--accent); }
+  .item-card { display: flex; gap: 12px; align-items: flex-start; }
+  .item-body { flex: 1; min-width: 0; }
+  .item-title { font-weight: 600; font-size: 1.1rem; margin: 0; font-family: "Lora", Georgia, serif; }
+  .item-meta { color: var(--ink-soft); font-size: .85rem; margin-top: 2px; }
+  .badges { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+  .badge { font-size: .75rem; padding: 2px 10px; border-radius: 999px; font-weight: 600; }
+  .b-tag { background: var(--purple-soft); color: var(--purple); font-weight: 500; }
+  .b-tag-alt { background: var(--pink-soft); color: var(--pink); font-weight: 500; }
+  .b-portions { background: var(--accent-soft); color: var(--accent); }
+  .b-useby { background: var(--amber-soft); color: var(--amber); }
+  .b-useby.urgent { background: var(--danger-soft); color: var(--danger); }
+  .b-score { background: var(--ink); color: var(--bg); }
+  .item-actions { display: flex; flex-direction: column; gap: 6px; }
+  .item-actions button {
+    border: 1px solid var(--border); background: var(--card); border-radius: 8px;
+    padding: 5px 10px; cursor: pointer; font-size: .8rem; color: var(--ink-soft); white-space: nowrap;
+  }
+  .item-actions button:hover { border-color: var(--accent); color: var(--accent); }
+  .item-actions .btn-eat { background: var(--accent-soft); border-color: var(--accent-soft); color: var(--accent); font-weight: 700; }
+  .item-actions .btn-bad { color: var(--danger); border-color: var(--danger-border); }
+  .why { color: var(--ink-soft); font-size: .85rem; margin-top: 6px; font-style: italic; }
+  .suggestion { border-left: 4px solid var(--accent); }
+  .section-label {
+    font-family: "Lora", Georgia, serif; font-style: italic; font-weight: 500;
+    font-size: 1.05rem; color: var(--ink-soft); margin: 24px 4px 8px;
+  }
+  .count-line { color: var(--ink-soft); font-size: .88rem; margin: 4px 2px 10px; }
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; align-items: center; }
+  .filters input { flex: 1; min-width: 140px; }
+  .filters select { width: auto; padding: 8px 10px; font-size: .92rem; }
+  .empty { text-align: center; color: var(--ink-soft); padding: 30px 16px; }
+  .empty .big { font-size: 2.4rem; display: inline-block; animation: floaty 3.2s ease-in-out infinite; }
+  @keyframes floaty { 0%,100% { transform: translateY(0) rotate(-4deg);} 50% { transform: translateY(-7px) rotate(4deg);} }
+  .mood-input-row { display: flex; gap: 8px; }
+  .mood-input-row input { flex: 1; padding: 13px 16px; font-size: 1.05rem; border-radius: 12px; }
+  .mood-input-row button {
+    background: var(--accent); color: var(--on-accent); border: none; border-radius: 12px;
+    padding: 0 22px; font-size: 1.05rem; cursor: pointer; font-weight: 600;
+  }
+  .mood-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 14px; }
+  .mood-chips button {
+    border: 1px solid var(--border); background: var(--card); color: var(--ink-soft);
+    padding: 7px 14px; border-radius: 999px; cursor: pointer; font-size: .9rem;
+  }
+  .mood-chips button:hover { border-color: var(--accent); color: var(--accent); }
+  .mood-box-wrap { text-align: center; padding: 10px 0 4px; }
+  .mood-box-wrap h2 { margin: 6px 0 2px; font-size: 1.45rem; }
+  .mood-box-wrap p { color: var(--ink-soft); margin: 0 0 14px; }
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .stat-box { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px; text-align: center; }
+  .stat-box .num { font-size: 1.7rem; font-weight: 800; font-family: "Lora", Georgia, serif; }
+  .stat-box .lbl { font-size: .78rem; color: var(--ink-soft); }
+  .stat-list { margin: 0; padding: 0; }
+  .stat-list li { display: flex; justify-content: space-between; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: .92rem; list-style: none; }
+  .stat-list li:last-child { border-bottom: none; }
+  .login-wrap { max-width: 420px; margin: 30px auto; }
+  .msg { font-size: .88rem; margin-top: 10px; color: var(--accent); }
+  .msg.error { color: var(--danger); }
+  .signed-in-bar { text-align: center; font-size: .85rem; color: var(--ink-soft); padding: 0 16px 6px; }
+  .signed-in-bar button { background: none; border: none; color: var(--accent); cursor: pointer; font-size: .85rem; text-decoration: underline; }
+  .toast {
+    position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+    background: var(--ink); color: var(--bg); padding: 10px 20px; border-radius: 999px;
+    font-size: .92rem; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 50;
+  }
+  .toast.show { opacity: 1; }
+  button:active { transform: scale(.97); }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  @media (max-width: 520px) { .item-actions { flex-direction: row; flex-wrap: wrap; } .item-card { flex-wrap: wrap; } }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<header>
+  <button id="theme-toggle" class="theme-toggle" onclick="toggleTheme()" aria-label="Switch between light and dark mode">🌙</button>
+  <h1>🥕 Shelf Help: Kitchen</h1>
+  <p>What's in, what's for dinner, what went in the bin.</p>
+</header>
+
+<div id="signed-in-bar" class="signed-in-bar" style="display:none"></div>
+
+<nav id="nav" style="display:none">
+  <button id="nav-pantry" onclick="showScreen('pantry')">🥫 Food in</button>
+  <button id="nav-add" onclick="showScreen('add')">➕ Add</button>
+  <button id="nav-choose" onclick="showScreen('choose')">🍽️ What should I eat?</button>
+  <button id="nav-stats" onclick="showScreen('stats')">📊 Stats</button>
+</nav>
+
+<main>
+
+  <!-- ============ LOGIN ============ -->
+  <section id="screen-login" class="screen">
+    <div class="card login-wrap">
+      <h2 style="margin-top:2px">Log in</h2>
+      <p style="color:var(--ink-soft); font-size:.92rem">Enter your email and tap the magic link we send you — same login on phone and laptop keeps your kitchen in sync. (It's the same account as Shelf Help.)</p>
+      <label class="field" for="login-email">Email</label>
+      <input type="email" id="login-email" autocomplete="email" placeholder="you@example.com"
+        onkeydown="if(event.key==='Enter')sendLoginLink()">
+      <button class="btn-primary" onclick="sendLoginLink()">Send magic link</button>
+      <div id="login-msg" class="msg"></div>
+    </div>
+  </section>
+
+  <!-- ============ PANTRY ============ -->
+  <section id="screen-pantry" class="screen">
+    <div class="filters">
+      <input type="text" id="search" placeholder="Search food & tags…" oninput="renderPantry()">
+      <select id="filter-tag" onchange="renderPantry()"><option value="">All tags</option></select>
+    </div>
+    <div class="count-line" id="count-line"></div>
+    <div id="pantry-container"></div>
+  </section>
+
+  <!-- ============ ADD / EDIT ============ -->
+  <section id="screen-add" class="screen">
+    <div class="card">
+      <h2 id="add-heading" style="margin-top:2px">Add food</h2>
+      <label class="field" for="f-name">Name</label>
+      <input type="text" id="f-name" placeholder="e.g. Chicken curry leftovers">
+      <label class="field" for="f-portions">Portions</label>
+      <input type="number" id="f-portions" min="1" step="1" value="1">
+      <label class="field" for="f-useby">Use by date <span class="hint">— leave blank if it keeps forever</span></label>
+      <input type="date" id="f-useby">
+      <label class="field" for="f-tags">Tags <span class="hint">— tap ones you've used before, or type new ones (comma separated)</span></label>
+      <input type="text" id="f-tags" placeholder="savoury, main meal">
+      <div class="tag-suggest" id="tag-suggest"></div>
+      <label class="field" for="f-notes">Keywords / notes <span class="hint">— helps "what should I eat?" match, e.g. "spicy, rice, comfort food"</span></label>
+      <input type="text" id="f-notes" placeholder="spicy, quick, needs using with the peppers">
+      <button class="btn-primary" id="save-btn" onclick="saveItem()">Add to kitchen</button>
+      <button class="btn-quiet" id="cancel-edit-btn" style="display:none; width:100%; margin-top:8px" onclick="cancelEdit()">Cancel editing</button>
+      <div id="add-msg" class="msg"></div>
+    </div>
+  </section>
+
+  <!-- ============ CHOOSE ============ -->
+  <section id="screen-choose" class="screen">
+    <div class="mood-box-wrap">
+      <h2>What do you fancy?</h2>
+      <p>Tell me the sort of thing you're after — I'll rate what's in.</p>
+      <div class="mood-input-row">
+        <input type="text" id="choose-input" placeholder='e.g. "something sweet" or "quick spicy main"'
+          onkeydown="if(event.key==='Enter')runChoose()">
+        <button onclick="runChoose()">Go</button>
+      </div>
+      <div class="mood-chips" id="choose-chips"></div>
+    </div>
+    <div id="choose-results"></div>
+  </section>
+
+  <!-- ============ STATS ============ -->
+  <section id="screen-stats" class="screen">
+    <div class="card" style="display:flex; align-items:center; gap:10px">
+      <label class="field" for="stats-period" style="margin:0; white-space:nowrap">Time period</label>
+      <select id="stats-period" onchange="renderStats()">
+        <option value="7">Last 7 days</option>
+        <option value="30" selected>Last 30 days</option>
+        <option value="90">Last 90 days</option>
+        <option value="365">Last year</option>
+      </select>
+    </div>
+    <div id="stats-container"></div>
+  </section>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ Supabase — same project as Shelf Help ============ */
+const SUPABASE_URL = 'https://qhqnufukdtgcrunlfrsj.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_DPCYkm8roknATBwORlb1Kg_KfdKnrM7';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let user = null;
+let items = [];        // current pantry, freshly fetched
+let editingId = null;
+
+/* ================= auth ================= */
+async function sendLoginLink() {
+  const email = document.getElementById('login-email').value.trim();
+  const msg = document.getElementById('login-msg');
+  if (!email) { msg.textContent = 'Type your email first 🙂'; msg.className = 'msg error'; return; }
+  msg.textContent = 'Sending…'; msg.className = 'msg';
+  const { error } = await sb.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: location.origin + location.pathname }
+  });
+  if (error) { msg.textContent = 'Problem: ' + error.message; msg.className = 'msg error'; }
+  else { msg.textContent = 'Check your email and tap the login link 📧'; msg.className = 'msg'; }
+}
+async function signOut() { await sb.auth.signOut(); }
+
+function setUser(u) {
+  user = u;
+  const bar = document.getElementById('signed-in-bar');
+  document.getElementById('nav').style.display = u ? 'flex' : 'none';
+  bar.style.display = u ? 'block' : 'none';
+  if (u) {
+    bar.innerHTML = `${esc(u.email)} · <button onclick="signOut()">sign out</button>`;
+    showScreen('pantry');
+  } else {
+    showScreen('login');
+  }
+}
+
+/* ================= navigation ================= */
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  const navBtn = document.getElementById('nav-' + name);
+  if (navBtn) navBtn.classList.add('active');
+  if (name === 'pantry') refreshPantry();
+  if (name === 'add' && !editingId) resetForm();
+  if (name === 'choose') { renderChooseChips(); document.getElementById('choose-results').innerHTML = ''; }
+  if (name === 'stats') renderStats();
+  window.scrollTo({ top: 0 });
+}
+
+/* ================= helpers ================= */
+function esc(s) { return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function tagHue(t) { let h = 0; for (const c of t) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h % 2 ? 'b-tag-alt' : 'b-tag'; }
+function daysUntil(dateStr) {
+  if (!dateStr) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  return Math.round((new Date(dateStr + 'T00:00:00') - today) / 86400000);
+}
+function useByBadge(dateStr) {
+  const n = daysUntil(dateStr);
+  if (n === null) return '';
+  if (n < 0)  return `<span class="badge b-useby urgent">⚠️ past use-by (${esc(dateStr)})</span>`;
+  if (n === 0) return `<span class="badge b-useby urgent">use by TODAY</span>`;
+  if (n === 1) return `<span class="badge b-useby">use by tomorrow</span>`;
+  return `<span class="badge b-useby">use by ${esc(dateStr)} · ${n} days</span>`;
+}
+let toastTimer;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+/* ================= data ================= */
+async function fetchItems() {
+  const { data, error } = await sb.from('kitchen_items').select('*')
+    .order('use_by', { ascending: true, nullsFirst: false });
+  if (error) { toast('Problem loading: ' + error.message); return []; }
+  return data;
+}
+async function logEvent(item, type, portions) {
+  const { error } = await sb.from('kitchen_events').insert({
+    user_id: user.id, item_name: item.name, tags: item.tags || [],
+    event_type: type, portions
+  });
+  if (error) toast('Problem logging: ' + error.message);
+}
+/* eat one portion; item disappears at zero */
+async function eatOne(id) {
+  const item = items.find(i => i.id === id); if (!item) return;
+  await logEvent(item, 'eaten', 1);
+  if (item.portions <= 1) {
+    await sb.from('kitchen_items').delete().eq('id', item.id);
+    toast(`Enjoy the ${item.name}! That was the last portion 🍴`);
+  } else {
+    await sb.from('kitchen_items').update({ portions: item.portions - 1 }).eq('id', item.id);
+    toast(`Enjoy! ${item.portions - 1} portion${item.portions - 1 === 1 ? '' : 's'} of ${item.name} left`);
+  }
+  refreshCurrentScreen();
+}
+/* bin all remaining portions — logged so stats can say "buy less of this" */
+async function binItem(id) {
+  const item = items.find(i => i.id === id); if (!item) return;
+  if (!confirm(`Throw out "${item.name}" (${item.portions} portion${item.portions === 1 ? '' : 's'})? It'll be logged so you know what to buy less of.`)) return;
+  await logEvent(item, 'binned', item.portions);
+  await sb.from('kitchen_items').delete().eq('id', item.id);
+  toast(`Binned — it happens. Logged for your stats 🗑`);
+  refreshCurrentScreen();
+}
+async function deleteItem(id) {
+  const item = items.find(i => i.id === id); if (!item) return;
+  if (!confirm(`Remove "${item.name}" without logging it? (Use "went bad" if it spoiled, so stats stay honest.)`)) return;
+  await sb.from('kitchen_items').delete().eq('id', item.id);
+  refreshCurrentScreen();
+}
+function refreshCurrentScreen() {
+  if (document.getElementById('screen-choose').classList.contains('active')) runChoose();
+  else refreshPantry();
+}
+
+/* ================= pantry ================= */
+function itemCard(item, extraHtml = '', highlight = false) {
+  const portions = `<span class="badge b-portions">${item.portions} portion${item.portions === 1 ? '' : 's'}</span>`;
+  const tags = (item.tags || []).map(t => `<span class="badge ${tagHue(t)}">${esc(t)}</span>`).join('');
+  return `<div class="card item-card ${highlight ? 'suggestion' : ''}">
+    <div class="item-body">
+      <p class="item-title">${esc(item.name)}</p>
+      ${item.notes ? `<div class="item-meta">📝 ${esc(item.notes)}</div>` : ''}
+      <div class="badges">${portions}${useByBadge(item.use_by)}${tags}</div>
+      ${extraHtml}
+    </div>
+    <div class="item-actions">
+      <button class="btn-eat" onclick="eatOne('${item.id}')">🍴 ate a portion</button>
+      <button class="btn-bad" onclick="binItem('${item.id}')">🗑 went bad</button>
+      <button onclick="editItem('${item.id}')">✏️ edit</button>
+      <button onclick="deleteItem('${item.id}')">✖ remove</button>
+    </div>
+  </div>`;
+}
+
+async function refreshPantry() {
+  items = await fetchItems();
+  renderTagFilter();
+  renderPantry();
+}
+function renderTagFilter() {
+  const sel = document.getElementById('filter-tag');
+  const cur = sel.value;
+  const tags = [...new Set(items.flatMap(i => i.tags || []))].sort();
+  sel.innerHTML = '<option value="">All tags</option>' + tags.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('');
+  if (tags.includes(cur)) sel.value = cur;
+}
+function renderPantry() {
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  const ft = document.getElementById('filter-tag').value;
+  const shown = items.filter(i =>
+    (!ft || (i.tags || []).includes(ft)) &&
+    (!q || i.name.toLowerCase().includes(q) || (i.tags || []).some(t => t.includes(q)) || (i.notes || '').toLowerCase().includes(q))
+  );
+  document.getElementById('count-line').textContent = items.length
+    ? `${shown.length} of ${items.length} item${items.length === 1 ? '' : 's'} · sorted by use-by date` : '';
+  const container = document.getElementById('pantry-container');
+  if (!items.length) {
+    container.innerHTML = `<div class="empty"><div class="big">🥕</div><p>Nothing in the kitchen yet. Add what you've got in!</p></div>`;
+    return;
+  }
+  if (!shown.length) {
+    container.innerHTML = `<div class="empty"><div class="big">🔍</div><p>Nothing matches that search.</p></div>`;
+    return;
+  }
+  container.innerHTML = shown.map(i => itemCard(i)).join('');
+}
+
+/* ================= add / edit ================= */
+const STARTER_TAGS = ['savoury','sweet','snack','main meal','ingredient','breakfast','quick','freezer','fresh','leftovers','healthy','treat'];
+function renderTagSuggestions() {
+  const used = [...new Set(items.flatMap(i => i.tags || []))];
+  const tags = [...new Set([...used, ...STARTER_TAGS])].slice(0, 16);
+  document.getElementById('tag-suggest').innerHTML = tags.map(t =>
+    `<button type="button" onclick="addTagToField('${t.replace(/'/g, "\\'")}')">+ ${esc(t)}</button>`).join('');
+}
+function addTagToField(tag) {
+  const f = document.getElementById('f-tags');
+  const cur = f.value.split(',').map(s => s.trim()).filter(Boolean);
+  if (!cur.includes(tag)) cur.push(tag);
+  f.value = cur.join(', ');
+}
+function resetForm() {
+  editingId = null;
+  document.getElementById('add-heading').textContent = 'Add food';
+  document.getElementById('save-btn').textContent = 'Add to kitchen';
+  document.getElementById('cancel-edit-btn').style.display = 'none';
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-portions').value = 1;
+  document.getElementById('f-useby').value = '';
+  document.getElementById('f-tags').value = '';
+  document.getElementById('f-notes').value = '';
+  document.getElementById('add-msg').textContent = '';
+  renderTagSuggestions();
+}
+async function saveItem() {
+  const msg = document.getElementById('add-msg');
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { msg.textContent = 'Give it a name first 🙂'; msg.className = 'msg error'; return; }
+  const record = {
+    name,
+    portions: Math.max(1, parseInt(document.getElementById('f-portions').value, 10) || 1),
+    use_by: document.getElementById('f-useby').value || null,
+    tags: document.getElementById('f-tags').value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean),
+    notes: document.getElementById('f-notes').value.trim(),
+  };
+  let error;
+  if (editingId) {
+    ({ error } = await sb.from('kitchen_items').update(record).eq('id', editingId));
+  } else {
+    ({ error } = await sb.from('kitchen_items').insert({ user_id: user.id, ...record }));
+  }
+  if (error) { msg.textContent = 'Problem: ' + error.message; msg.className = 'msg error'; return; }
+  toast(editingId ? 'Updated ✔' : `${name} added ✔`);
+  const wasEditing = !!editingId;
+  resetForm();
+  if (wasEditing) showScreen('pantry');
+}
+function editItem(id) {
+  const it = items.find(i => i.id === id); if (!it) return;
+  editingId = id;
+  showScreen('add');
+  document.getElementById('add-heading').textContent = 'Edit food';
+  document.getElementById('save-btn').textContent = 'Save changes';
+  document.getElementById('cancel-edit-btn').style.display = 'block';
+  document.getElementById('f-name').value = it.name;
+  document.getElementById('f-portions').value = it.portions;
+  document.getElementById('f-useby').value = it.use_by || '';
+  document.getElementById('f-tags').value = (it.tags || []).join(', ');
+  document.getElementById('f-notes').value = it.notes || '';
+  renderTagSuggestions();
+}
+function cancelEdit() { resetForm(); showScreen('pantry'); }
+
+/* ================= what should I eat? ================= */
+/* Scoring: each word you type earns points where it matches —
+   name +3, tag +2, notes +1. Then use-by urgency: past +3 (eat ASAP!),
+   today +2, tomorrow +1 — exactly the "+2 today, +1 tomorrow" rule. */
+function scoreItem(item, words) {
+  let score = 0; const why = [];
+  const name = item.name.toLowerCase();
+  const tags = (item.tags || []).map(t => t.toLowerCase());
+  const notes = (item.notes || '').toLowerCase();
+  for (const w of words) {
+    if (name.includes(w)) { score += 3; why.push(`name matches "${w}"`); continue; }
+    if (tags.some(t => t.includes(w) || w.includes(t))) { score += 2; why.push(`tagged "${w}"`); continue; }
+    if (notes.includes(w)) { score += 1; why.push(`notes mention "${w}"`); }
+  }
+  const n = daysUntil(item.use_by);
+  if (n !== null) {
+    if (n < 0) { score += 3; why.push('past its use-by — eat ASAP or bin it'); }
+    else if (n === 0) { score += 2; why.push('use by today'); }
+    else if (n === 1) { score += 1; why.push('use by tomorrow'); }
+  }
+  return { score, why };
+}
+
+const STOP_WORDS = ['something','anything','a','an','the','i','fancy','want','some','bit','of','to','eat','and','or','for','feel','like','really','please'];
+async function runChoose() {
+  const el = document.getElementById('choose-results');
+  el.innerHTML = `<div class="empty"><p>Thinking…</p></div>`;
+  items = await fetchItems();
+  if (!items.length) {
+    el.innerHTML = `<div class="empty"><div class="big">🥕</div><p>The kitchen's empty — nothing to rate! Add some food first.</p></div>`;
+    return;
+  }
+  const words = document.getElementById('choose-input').value.toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '').split(/\s+/)
+    .filter(w => w && !STOP_WORDS.includes(w));
+  const ranked = items
+    .map(item => ({ item, ...scoreItem(item, words) }))
+    .sort((a, b) => b.score - a.score);
+  const label = words.length
+    ? `Best matches for "${esc(words.join(' '))}"`
+    : `No craving typed — ranked by what needs eating first`;
+  el.innerHTML = `<div class="section-label">${label}</div>` +
+    ranked.map(({ item, score, why }, idx) => itemCard(item,
+      `<div class="badges" style="margin-top:6px"><span class="badge b-score">score ${score}</span></div>
+       ${why.length ? `<div class="why">💡 ${esc(why.join(' · '))}</div>` : ''}`,
+      idx === 0 && score > 0
+    )).join('');
+}
+function renderChooseChips() {
+  const chips = ['something sweet', 'savoury snack', 'quick main meal', 'comfort food', 'healthy', 'use stuff up'];
+  document.getElementById('choose-chips').innerHTML = chips.map(c =>
+    `<button onclick="document.getElementById('choose-input').value='${c}';runChoose()">${esc(c)}</button>`).join('');
+}
+
+/* ================= stats ================= */
+async function renderStats() {
+  const el = document.getElementById('stats-container');
+  el.innerHTML = `<div class="empty"><p>Loading…</p></div>`;
+  const days = parseInt(document.getElementById('stats-period').value, 10);
+  const since = new Date(Date.now() - days * 86400000).toISOString();
+  const { data, error } = await sb.from('kitchen_events').select('*')
+    .gte('created_at', since).order('created_at', { ascending: false });
+  if (error) { el.innerHTML = `<div class="empty"><p>${esc(error.message)}</p></div>`; return; }
+  if (!data.length) {
+    el.innerHTML = `<div class="empty"><div class="big">📊</div><p>No history in this period yet. Eat something! (Or bin something, but hopefully not.)</p></div>`;
+    return;
+  }
+  const eaten = data.filter(e => e.event_type === 'eaten');
+  const binned = data.filter(e => e.event_type === 'binned');
+  const sum = arr => arr.reduce((s, e) => s + (e.portions || 1), 0);
+  const tally = arr => {
+    const m = {};
+    arr.forEach(e => m[e.item_name] = (m[e.item_name] || 0) + (e.portions || 1));
+    return Object.entries(m).sort((a, b) => b[1] - a[1]);
+  };
+  const tagTally = arr => {
+    const m = {};
+    arr.forEach(e => (e.tags || []).forEach(t => m[t] = (m[t] || 0) + (e.portions || 1)));
+    return Object.entries(m).sort((a, b) => b[1] - a[1]);
+  };
+  const list = pairs => pairs.length
+    ? `<ul class="stat-list">${pairs.map(([k, v]) => `<li><span>${esc(k)}</span><b>${v}</b></li>`).join('')}</ul>`
+    : `<p style="color:var(--ink-soft); font-size:.9rem; margin:4px 0">Nothing here — great news for this section 🎉</p>`;
+  const eatenN = sum(eaten), binnedN = sum(binned);
+  const wasteRate = eatenN + binnedN ? Math.round(binnedN / (eatenN + binnedN) * 100) : 0;
+  el.innerHTML = `
+    <div class="stat-grid">
+      <div class="stat-box"><div class="num" style="color:var(--accent)">${eatenN}</div><div class="lbl">portions eaten</div></div>
+      <div class="stat-box"><div class="num" style="color:var(--danger)">${binnedN}</div><div class="lbl">portions binned (${wasteRate}% of the total)</div></div>
+    </div>
+    <div class="card"><h2 style="margin-top:2px">🍴 What you ate</h2>${list(tally(eaten))}</div>
+    <div class="card"><h2 style="margin-top:2px">🏷️ Eaten by tag</h2>${list(tagTally(eaten))}</div>
+    <div class="card"><h2 style="margin-top:2px">🗑 Went bad — consider buying less</h2>${list(tally(binned))}</div>`;
+}
+
+/* ================= theme ================= */
+const THEME_KEY = 'shelfhelp-theme';   // shared with the main Shelf Help app
+const themeMedia = window.matchMedia('(prefers-color-scheme: dark)');
+function currentTheme() { return localStorage.getItem(THEME_KEY) || (themeMedia.matches ? 'dark' : 'light'); }
+function applyTheme() {
+  const t = currentTheme();
+  document.documentElement.dataset.theme = t;
+  document.getElementById('theme-toggle').textContent = t === 'dark' ? '☀️' : '🌙';
+  document.querySelector('meta[name="theme-color"]').setAttribute('content', t === 'dark' ? '#211b1f' : '#f4efe6');
+}
+function toggleTheme() {
+  localStorage.setItem(THEME_KEY, currentTheme() === 'dark' ? 'light' : 'dark');
+  applyTheme();
+}
+themeMedia.addEventListener('change', () => { if (!localStorage.getItem(THEME_KEY)) applyTheme(); });
+
+/* ================= boot ================= */
+applyTheme();
+sb.auth.onAuthStateChange((_event, session) => setUser(session ? session.user : null));
+sb.auth.getSession().then(({ data: { session } }) => setUser(session ? session.user : null));
+</script>
+</body>
+</html>
