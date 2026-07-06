@@ -507,9 +507,11 @@
       <label class="field">Check where?</label>
       <div class="choice-row" id="watch-kind" data-value="book">
         <button data-v="book">📖 Books (Open Library)</button>
+        <button data-v="tv">📺 TV (TVmaze)</button>
         <button data-v="dvd">💿 Films (iTunes)</button>
         <button data-v="other">🔍 Web search only</button>
       </div>
+      <p class="notify-hint" style="margin-top:8px">For TV, the words must be the show's title (that's what TVmaze searches). For books/films, an author or director works best.</p>
       <button class="btn-primary" onclick="saveWatch()">Start watching 🔭</button>
       <button class="btn-quiet" style="display:block; width:100%; margin-top:8px" onclick="toggleAddWatch(false)">Cancel</button>
     </div>
