@@ -409,12 +409,14 @@
         <input type="date" id="f-release">
       </div>
 
-      <div id="finished-extras" style="display:none">
-        <label class="field">Rating <span class="hint">— tap the same star again to clear</span></label>
+      <div id="rating-wrap" style="display:none">
+        <label class="field">Rating <span class="hint">— how's it going so far? Tap the same star again to clear</span></label>
         <div class="stars" id="f-rating" data-value="0">
           <button type="button" data-v="1">☆</button><button type="button" data-v="2">☆</button><button type="button" data-v="3">☆</button><button type="button" data-v="4">☆</button><button type="button" data-v="5">☆</button>
         </div>
+      </div>
 
+      <div id="finished-extras" style="display:none">
         <label class="field notify-check">
           <input type="checkbox" id="f-notify" onchange="toggleNotifyWords()"> 🔔 Tell me about related new releases
         </label>
@@ -614,9 +616,11 @@ function updatePlatformVisibility() {
   document.getElementById('platform-wrap').style.display = isGame ? 'block' : 'none';
 }
 function updateFinishedExtras() {
-  // rating + notify only appear once something is Finished; release date only
-  // for Want-to-try (any other status means it's obviously already out)
+  // stars show for In progress ("how's it going?") and Finished; the 🔔 notify
+  // block only when Finished; release date only for Want-to-try (any other
+  // status means it's obviously already out)
   const status = document.getElementById('f-status').dataset.value;
+  document.getElementById('rating-wrap').style.display = (status === 'progress' || status === 'finished') ? 'block' : 'none';
   document.getElementById('finished-extras').style.display = status === 'finished' ? 'block' : 'none';
   document.getElementById('release-wrap').style.display = status === 'want' ? 'block' : 'none';
 }
