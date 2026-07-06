@@ -296,6 +296,15 @@
     .item-actions { flex-direction: row; }
     .item-card { flex-wrap: wrap; }
   }
+  .news-badge {
+    display: none; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--pink); margin-left: 6px; vertical-align: 2px;
+  }
+  input[type=date] {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--border);
+    border-radius: 10px; font-size: 1rem; font-family: inherit;
+    background: var(--card); color: var(--ink);
+  }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -311,6 +320,7 @@
   <button id="nav-list" onclick="showScreen('list')">📖 My stuff</button>
   <button id="nav-add" onclick="showScreen('add')">➕ Add item</button>
   <button id="nav-mood" onclick="showScreen('mood')">✨ What should I do?</button>
+  <button id="nav-news" onclick="showScreen('news')">🔔 News<span id="news-badge" class="news-badge"></span></button>
 </nav>
 
 <div id="sync-bar" class="sync-bar" style="display:none"></div>
@@ -378,6 +388,9 @@
         <button data-v="digital">☁️ Digital / streaming</button>
         <button data-v="audio">🎧 Audio</button>
       </div>
+
+      <label class="field" for="f-release">Release date <span class="hint">— only for things that aren't out yet; hidden from suggestions until then</span></label>
+      <input type="date" id="f-release">
 
       <label class="field">Status</label>
       <div class="choice-row" id="f-status" data-value="owned">
@@ -470,6 +483,16 @@
     </div>
   </section>
 
+  <!-- ============ SCREEN 5: RELEASE NEWS (🔔 alerts) ============ -->
+  <section id="screen-news" class="screen">
+    <div class="mood-box-wrap">
+      <h2>Release news</h2>
+      <p>New things related to what you've ticked 🔔 on. Checked about once a day when you open the app.</p>
+    </div>
+    <div id="news-list"></div>
+    <p style="text-align:center; margin-top:14px"><button class="btn-quiet" onclick="checkReleases(true)">Check again now</button></p>
+  </section>
+
 </main>
 
 <footer>
@@ -485,8 +508,10 @@
 /* ================= data ================= */
 const STORE_KEY = 'shelfhelp-items-v1';
 const CHOICE_KEY = 'shelfhelp-choices-v1';   // log of "this one" picks, for future monthly wrap-ups
+const SEEN_KEY = 'shelfhelp-seen-v1';        // dismissed release alerts (synced, so "got it" sticks everywhere)
 let items = [];
 let choices = [];
+let seenAlerts = [];
 let editingId = null;
 
 function load() {
@@ -494,10 +519,13 @@ function load() {
   catch(e) { items = []; }
   try { choices = JSON.parse(localStorage.getItem(CHOICE_KEY)) || []; }
   catch(e) { choices = []; }
+  try { seenAlerts = JSON.parse(localStorage.getItem(SEEN_KEY)) || []; }
+  catch(e) { seenAlerts = []; }
 }
 function persist() {
   localStorage.setItem(STORE_KEY, JSON.stringify(items));
   localStorage.setItem(CHOICE_KEY, JSON.stringify(choices));
+  localStorage.setItem(SEEN_KEY, JSON.stringify(seenAlerts));
   schedulePush();   // also send to the cloud shortly, if signed in
 }
 // items with deleted:true are "tombstones" — kept so a deletion on one
@@ -523,6 +551,7 @@ function showScreen(name) {
   if (navBtn) navBtn.classList.add('active');
   if (name === 'list') renderList();
   if (name === 'mood') renderMoodChips();
+  if (name === 'news') renderNews();
   if (name === 'add' && !editingId) resetForm();
   window.scrollTo({top:0});
 }
@@ -603,6 +632,7 @@ function resetForm() {
   document.getElementById('f-title').value = '';
   document.getElementById('f-tags').value = '';
   document.getElementById('f-notes').value = '';
+  document.getElementById('f-release').value = '';
   setChoice('f-type','book'); setChoice('f-status','owned');
   setChoice('f-format','physical'); setChoice('f-effort','low'); setChoice('f-time','30');
   setChoice('f-platform','computer'); updatePlatformVisibility();
@@ -627,6 +657,7 @@ function saveItem() {
     time: parseInt(document.getElementById('f-time').dataset.value),
     tags: document.getElementById('f-tags').value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean),
     notes: document.getElementById('f-notes').value.trim(),
+    releaseDate: document.getElementById('f-release').value || null,
     rating: parseInt(document.getElementById('f-rating').dataset.value) || 0,
     notify: document.getElementById('f-notify').checked,
     notifyWords: document.getElementById('f-notify-words').value.trim(),
@@ -654,6 +685,7 @@ function editItem(id) {
   document.getElementById('f-title').value = it.title;
   document.getElementById('f-tags').value = it.tags.join(', ');
   document.getElementById('f-notes').value = it.notes || '';
+  document.getElementById('f-release').value = it.releaseDate || '';
   setChoice('f-type', it.type); setChoice('f-status', it.status);
   setChoice('f-format', it.format); setChoice('f-effort', it.effort); setChoice('f-time', it.time);
   setChoice('f-platform', it.platform || 'computer'); updatePlatformVisibility();
@@ -730,6 +762,7 @@ function itemCard(it, extraHtml='') {
       ${it.notes ? `<div class="item-meta">📝 ${esc(it.notes)}</div>` : ''}
       <div class="badges">
         <span class="badge ${STATUS_CLASS[it.status]}">${STATUS_LABEL[it.status]}</span>
+        ${!isOut(it) ? `<span class="badge b-notify">🗓 out ${esc(it.releaseDate)}</span>` : ''}
         ${it.tags.map(t => `<span class="badge ${tagHue(t)}">${esc(t)}</span>`).join('')}
         ${it.notify ? `<span class="badge b-notify">🔔 ${esc(it.notifyWords || 'new releases')}</span>` : ''}
       </div>
@@ -848,7 +881,7 @@ function runMood() {
   const qWords = q.replace(/[^a-z0-9\s-]/g,'').split(/\s+/).filter(w => w.length > 2);
 
   const scored = active
-    .filter(i => i.status !== 'finished')
+    .filter(i => i.status !== 'finished' && isOut(i))
     .map(it => {
       let score = 0; const why = [];
       // tag matches
@@ -907,7 +940,7 @@ function runMood() {
   if (!q) {
     // no query: just show in-progress + a random owned pick
     const inProg = active.filter(i => i.status === 'progress');
-    const owned = active.filter(i => i.status === 'owned');
+    const owned = active.filter(i => i.status === 'owned' && isOut(i));
     let html = '';
     if (inProg.length) html += `<div class="section-label">Finish what you started</div>` + inProg.map(i => itemCard(i)).join('');
     if (owned.length) {
@@ -937,7 +970,7 @@ function renderMoodChips() {
 
 /* ================= backup ================= */
 function exportData() {
-  const payload = { app: 'shelf-help', version: 2, items, choices };
+  const payload = { app: 'shelf-help', version: 3, items, choices, seen: seenAlerts };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -961,6 +994,9 @@ function importData(ev) {
       if (Array.isArray(data.choices)) {
         const seen = new Set(choices.map(c => c.id + '|' + c.ts));
         data.choices.forEach(c => { if (c.id && c.ts && !seen.has(c.id + '|' + c.ts)) choices.push(c); });
+      }
+      if (Array.isArray(data.seen)) {
+        data.seen.forEach(k => { if (!seenAlerts.includes(k)) seenAlerts.push(k); });
       }
       persist(); renderList();
       toast(`Restored ${added} item${added===1?'':'s'} ✔`);
@@ -1039,6 +1075,7 @@ function mergeRemote(remote) {
   (remote.choices || []).forEach(c => {
     if (c.id && c.ts && !seen.has(c.id + '|' + c.ts)) choices.push(c);
   });
+  (remote.seen || []).forEach(k => { if (!seenAlerts.includes(k)) seenAlerts.push(k); });
 }
 
 async function pullMergePush() {
@@ -1051,7 +1088,8 @@ async function pullMergePush() {
     if (data && data.data) mergeRemote(data.data);
     localStorage.setItem(STORE_KEY, JSON.stringify(items));
     localStorage.setItem(CHOICE_KEY, JSON.stringify(choices));
-    renderList();
+    localStorage.setItem(SEEN_KEY, JSON.stringify(seenAlerts));
+    renderList(); updateNewsBadge();
     await pushRemote();
   } catch (e) { setSyncState('error'); }
 }
@@ -1061,7 +1099,7 @@ async function pushRemote() {
   setSyncState('syncing');
   const { error } = await sb.from('shelves').upsert({
     user_id: syncUser.id,
-    data: { items, choices },
+    data: { items, choices, seen: seenAlerts },
     updated_at: new Date().toISOString()
   });
   setSyncState(error ? 'error' : 'ok');
@@ -1071,6 +1109,133 @@ function schedulePush() {
   if (!sb || !syncUser) return;
   clearTimeout(pushTimer);
   pushTimer = setTimeout(pushRemote, 1500);   // debounce rapid edits
+}
+
+/* ================= release news (🔔 alerts) =================
+   Checked on open, throttled to ~once a day. TV via TVmaze, books via
+   Open Library (best-effort), films via iTunes director search.
+   Free-text keyword watches can't be auto-checked from a browser, so
+   they appear as one-tap web searches. Dismissals sync via `seen`. */
+const ALERTS_KEY = 'shelfhelp-alerts-v1';
+const LASTCHECK_KEY = 'shelfhelp-lastcheck';
+let alerts = [];
+
+function loadAlerts() { try { alerts = JSON.parse(localStorage.getItem(ALERTS_KEY)) || []; } catch(e) { alerts = []; } }
+function freshAlerts() { return alerts.filter(a => !seenAlerts.includes(a.key)); }
+function updateNewsBadge() {
+  document.getElementById('news-badge').style.display = freshAlerts().length ? 'inline-block' : 'none';
+}
+function todayISO() { return new Date().toISOString().slice(0, 10); }
+function isOut(it) { return !it.releaseDate || it.releaseDate <= todayISO(); }
+
+async function checkReleases(force = false) {
+  const last = parseInt(localStorage.getItem(LASTCHECK_KEY) || '0');
+  if (!force && Date.now() - last < 20 * 3600 * 1000) { updateNewsBadge(); return; }
+  if (force) toast('Checking for news…');
+  const watching = activeItems().filter(i => i.notify);
+  const found = [];
+  const yr = new Date().getFullYear();
+  for (const it of watching) {
+    try {
+      if (it.type === 'tv') {
+        const r = await fetch('https://api.tvmaze.com/singlesearch/shows?q=' +
+          encodeURIComponent(it.title.replace(/\(.*?\)/g, '').trim()) + '&embed=episodes');
+        if (!r.ok) continue;
+        const show = await r.json();
+        const upcoming = ((show._embedded || {}).episodes || [])
+          .filter(e => e.airdate && e.airdate >= todayISO())
+          .sort((a, b) => a.airdate.localeCompare(b.airdate));
+        if (upcoming.length) {
+          const next = upcoming[0];
+          found.push({ key: 'tv|' + show.id + '|' + next.id, emoji: '📺', title: show.name,
+            detail: 'Season ' + next.season + ', episode ' + next.number + ' airs ' + next.airdate,
+            url: show.url });
+        }
+      } else if (it.type === 'book' && it.notifyWords) {
+        const r = await fetch('https://openlibrary.org/search.json?q=' +
+          encodeURIComponent(it.notifyWords) + '&sort=new&limit=3&fields=key,title,author_name,first_publish_year');
+        if (!r.ok) continue;
+        ((await r.json()).docs || [])
+          .filter(d => d.first_publish_year && d.first_publish_year >= yr)
+          .forEach(d => found.push({ key: 'ol|' + d.key, emoji: '📖', title: d.title,
+            detail: 'by ' + (d.author_name || ['unknown']).join(', ') + ' — listed as new this year (book data can be patchy)',
+            url: 'https://openlibrary.org' + d.key, addable: d.title, addType: 'book' }));
+      } else if (it.type === 'dvd' && it.notifyWords) {
+        const r = await fetch('https://itunes.apple.com/search?media=movie&limit=5&attribute=directorTerm&term=' +
+          encodeURIComponent(it.notifyWords));
+        if (!r.ok) continue;
+        const cutoff = new Date(Date.now() - 180 * 24 * 3600 * 1000).toISOString();
+        ((await r.json()).results || [])
+          .filter(m => m.releaseDate && m.releaseDate >= cutoff)
+          .forEach(m => found.push({ key: 'mv|' + m.trackId, emoji: '💿', title: m.trackName,
+            detail: 'directed by ' + (m.artistName || '?') + ' — released ' + m.releaseDate.slice(0, 10),
+            url: m.trackViewUrl, addable: m.trackName, addType: 'dvd' }));
+      }
+    } catch (e) { /* offline or API hiccup — we'll try again next open */ }
+  }
+  alerts = found;
+  localStorage.setItem(ALERTS_KEY, JSON.stringify(alerts));
+  localStorage.setItem(LASTCHECK_KEY, String(Date.now()));
+  renderNews(); updateNewsBadge();
+  if (force) toast(freshAlerts().length ? 'Found ' + freshAlerts().length + ' thing(s) 🔔' : 'Nothing new right now');
+}
+
+function renderNews() {
+  const el = document.getElementById('news-list');
+  if (!el) return;
+  const fresh = freshAlerts();
+  const kw = activeItems().filter(i =>
+    i.notify && i.notifyWords && !['tv','book','dvd'].includes(i.type));
+  let html = '';
+  if (fresh.length) {
+    html += fresh.map(a => `<div class="card item-card suggestion">
+      <div class="item-emoji">${a.emoji}</div>
+      <div class="item-body">
+        <p class="item-title">${esc(a.title)}</p>
+        <div class="item-meta">${esc(a.detail)}</div>
+        <div class="badges" style="margin-top:8px">
+          <a class="badge b-notify" href="${esc(a.url)}" target="_blank" rel="noopener" style="text-decoration:none">🔗 details</a>
+        </div>
+      </div>
+      <div class="item-actions">
+        ${a.addable ? `<button onclick="addFromAlert('${a.key}')">➕ add to shelf</button>` : ''}
+        <button onclick="dismissAlert('${a.key}')">✓ got it</button>
+      </div>
+    </div>`).join('');
+  } else {
+    html += `<div class="empty"><div class="big">🔕</div><p>Nothing new right now. Tick 🔔 on things when you finish them (or via ✏️ edit) and news about them lands here.</p></div>`;
+  }
+  if (kw.length) {
+    html += `<div class="section-label">Keyword watches — tap to search the web</div>` +
+      kw.map(i => `<div class="card item-card">
+        <div class="item-emoji">🔍</div>
+        <div class="item-body">
+          <p class="item-title">${esc(i.notifyWords)}</p>
+          <div class="item-meta">from "${esc(i.title)}" — this kind can't be auto-checked</div>
+        </div>
+        <div class="item-actions">
+          <button onclick="window.open('https://www.google.com/search?q=' + encodeURIComponent('${esc(i.notifyWords).replace(/'/g, "\\'")} new ${yrNow()}'), '_blank')">🔍 search</button>
+        </div>
+      </div>`).join('');
+  }
+  el.innerHTML = html;
+}
+function yrNow() { return new Date().getFullYear(); }
+
+function dismissAlert(key) {
+  if (!seenAlerts.includes(key)) seenAlerts.push(key);
+  persist(); renderNews(); updateNewsBadge();
+}
+function addFromAlert(key) {
+  const a = alerts.find(x => x.key === key);
+  if (!a) return;
+  items.push({ id: crypto.randomUUID(), created: Date.now(), updated: Date.now(),
+    title: a.addable, type: a.addType || 'book', platform: null, status: 'want',
+    format: 'physical', effort: 'low', time: 60, tags: [],
+    notes: 'Added from release news', releaseDate: null, rating: 0,
+    notify: false, notifyWords: '' });
+  dismissAlert(key);
+  toast('"' + a.addable + '" added to your shelf ✔');
 }
 
 /* ================= theme (light / dark) ================= */
@@ -1101,11 +1266,14 @@ function toast(msg) {
 }
 
 load();
+loadAlerts();
 showScreen(activeItems().length ? 'mood' : 'list');
 renderList();
 renderTagSuggestions();
 applyTheme();
+updateNewsBadge();
 initSync();
+checkReleases();
 </script>
 </body>
 </html>
