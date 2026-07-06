@@ -617,8 +617,18 @@ function allTags() {
   return [...s].sort();
 }
 function renderTagSuggestions() {
-  // your own previously-used tags first, topped up with starters so the list is never empty
-  const tags = [...new Set([...allTags(), ...STARTER_TAGS])].slice(0, 16);
+  // her 12 most-used tags, ties broken by most recently used (stable list =
+  // muscle memory; recency lets new favourites climb in). Starters only top
+  // up while her own tag collection is still small. Max 12 for mobile.
+  const stats = new Map();
+  activeItems().forEach(i => i.tags.forEach(t => {
+    const s = stats.get(t) || { n: 0, last: 0 };
+    s.n++; s.last = Math.max(s.last, i.updated || 0);
+    stats.set(t, s);
+  }));
+  const own = [...stats.keys()].sort((a, b) =>
+    stats.get(b).n - stats.get(a).n || stats.get(b).last - stats.get(a).last);
+  const tags = [...new Set([...own, ...STARTER_TAGS])].slice(0, 12);
   document.getElementById('tag-suggest').innerHTML = tags.map(t =>
     `<button type="button" onclick="addTagToField('${t.replace(/'/g,"\\'")}')">+ ${esc(t)}</button>`).join('');
 }
@@ -933,8 +943,9 @@ function runMood() {
       }
       // finish what you started
       if (it.status === 'progress') { score += 2; why.push(`you're already partway through${it.notes ? ' — ' + it.notes.toLowerCase() : ''}`); }
-      // slight boost for owned-but-unstarted (guilt pile!)
-      if (it.status === 'owned') score += 0.5;
+      // owned beats want-to-try: she already has it, no need to go get it (her call)
+      if (it.status === 'owned') { score += 1; why.push('already on your shelf'); }
+      if (it.status === 'want') score -= 0.5;
       // things she's rated highly (e.g. an in-progress show she's loving)
       if ((it.rating || 0) >= 4) { score += 1; why.push('you rated it highly'); }
       return { it, score, why };
@@ -1243,13 +1254,15 @@ function dismissAlert(key) {
 function addFromAlert(key) {
   const a = alerts.find(x => x.key === key);
   if (!a) return;
-  items.push({ id: crypto.randomUUID(), created: Date.now(), updated: Date.now(),
+  const id = crypto.randomUUID();
+  items.push({ id, created: Date.now(), updated: Date.now(),
     title: a.addable, type: a.addType || 'book', platform: null, status: 'want',
     format: 'physical', effort: 'low', time: 60, tags: [],
     notes: 'Added from release news', releaseDate: null, rating: 0,
     notify: false, notifyWords: '' });
   dismissAlert(key);
-  toast('"' + a.addable + '" added to your shelf ✔');
+  editItem(id);   // straight into the edit page so she can complete the details now
+  toast('Added — fill in the details 👇');
 }
 
 /* ================= theme (light / dark) ================= */
