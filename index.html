@@ -300,6 +300,12 @@
     display: none; width: 8px; height: 8px; border-radius: 50%;
     background: var(--pink); margin-left: 6px; vertical-align: 2px;
   }
+  .stat-row { display: flex; align-items: center; gap: 10px; margin: 9px 0; }
+  .stat-label { width: 118px; font-size: .92rem; text-align: right; flex-shrink: 0; }
+  .stat-bar-track { flex: 1; height: 16px; background: var(--accent-soft); border-radius: 999px; overflow: hidden; }
+  .stat-bar-fill { height: 100%; background: var(--accent); border-radius: 999px; min-width: 4px; }
+  .stat-count { width: 76px; font-size: .85rem; color: var(--ink-soft); flex-shrink: 0; }
+  .stat-total { text-align: center; font-family: "Lora", Georgia, serif; font-size: 1.1rem; margin: 4px 0 14px; }
   input[type=date] {
     width: 100%; padding: 10px 12px; border: 1px solid var(--border);
     border-radius: 10px; font-size: 1rem; font-family: inherit;
@@ -321,6 +327,7 @@
   <button id="nav-add" onclick="showScreen('add')">➕ Add item</button>
   <button id="nav-mood" onclick="showScreen('mood')">✨ What should I do?</button>
   <button id="nav-news" onclick="showScreen('news')">🔔 News<span id="news-badge" class="news-badge"></span></button>
+  <button id="nav-stats" onclick="showScreen('stats')">📊 Stats</button>
 </nav>
 
 <div id="sync-bar" class="sync-bar" style="display:none"></div>
@@ -492,7 +499,35 @@
       <p>New things related to what you've ticked 🔔 on. Checked about once a day when you open the app.</p>
     </div>
     <div id="news-list"></div>
+    <div class="card" id="add-watch-form" style="display:none">
+      <label class="field" for="watch-words" style="margin-top:2px">Words to watch <span class="hint">— an author, director, series name…</span></label>
+      <input type="text" id="watch-words" placeholder="e.g. N.K. Jemisin" onkeydown="if(event.key==='Enter')saveWatch()">
+      <label class="field">Check where?</label>
+      <div class="choice-row" id="watch-kind" data-value="book">
+        <button data-v="book">📖 Books (Open Library)</button>
+        <button data-v="dvd">💿 Films (iTunes)</button>
+        <button data-v="other">🔍 Web search only</button>
+      </div>
+      <button class="btn-primary" onclick="saveWatch()">Start watching 🔭</button>
+      <button class="btn-quiet" style="display:block; width:100%; margin-top:8px" onclick="toggleAddWatch(false)">Cancel</button>
+    </div>
     <p style="text-align:center; margin-top:14px"><button class="btn-quiet" onclick="checkReleases(true)">Check again now</button></p>
+  </section>
+
+  <!-- ============ SCREEN 6: STATS (from the ▶ this one! log) ============ -->
+  <section id="screen-stats" class="screen">
+    <div class="mood-box-wrap">
+      <h2>Your stats</h2>
+      <p>What you actually chose to do — from your ▶ this one! taps.</p>
+    </div>
+    <div class="choice-row" id="stats-range" data-value="30" style="justify-content:center; margin-bottom:16px">
+      <button data-v="7">7 days</button>
+      <button data-v="30">30 days</button>
+      <button data-v="90">90 days</button>
+      <button data-v="365">A year</button>
+      <button data-v="0">All time</button>
+    </div>
+    <div id="stats-content"></div>
   </section>
 
 </main>
@@ -533,6 +568,10 @@ function persist() {
 // items with deleted:true are "tombstones" — kept so a deletion on one
 // device isn't undone by a sync from another device that still has the item
 function activeItems() { return items.filter(i => !i.deleted); }
+// standalone release-watches (added from the News page) are stored as items
+// with watchOnly:true so they reuse sync/tombstones — but they are NOT shelf
+// content: use shelfItems() for anything the list/mood/tag screens show
+function shelfItems() { return items.filter(i => !i.deleted && !i.watchOnly); }
 
 const TYPE_EMOJI = { book:'📖', tv:'📺', dvd:'💿', craft:'🧶', game:'🎮', podcast:'🎙️', other:'✨' };
 const TYPE_LABEL = { book:'Book', tv:'TV show', dvd:'Film', craft:'Craft', game:'Game', podcast:'Podcast', other:'Other' };
@@ -554,6 +593,7 @@ function showScreen(name) {
   if (name === 'list') renderList();
   if (name === 'mood') renderMoodChips();
   if (name === 'news') renderNews();
+  if (name === 'stats') renderStats();
   if (name === 'add' && !editingId) resetForm();
   window.scrollTo({top:0});
 }
@@ -566,6 +606,7 @@ document.querySelectorAll('.choice-row').forEach(row => {
     row.querySelectorAll('button').forEach(b => b.classList.toggle('selected', b === e.target));
     if (row.id === 'f-type') updatePlatformVisibility();
     if (row.id === 'f-status') updateFinishedExtras();
+    if (row.id === 'stats-range') renderStats();
   });
 });
 function updatePlatformVisibility() {
@@ -621,7 +662,7 @@ function renderTagSuggestions() {
   // muscle memory; recency lets new favourites climb in). Starters only top
   // up while her own tag collection is still small. Max 12 for mobile.
   const stats = new Map();
-  activeItems().forEach(i => i.tags.forEach(t => {
+  shelfItems().forEach(i => i.tags.forEach(t => {
     const s = stats.get(t) || { n: 0, last: 0 };
     s.n++; s.last = Math.max(s.last, i.updated || 0);
     stats.set(t, s);
@@ -796,7 +837,7 @@ function renderList() {
   const q = document.getElementById('search').value.trim().toLowerCase();
   const ft = document.getElementById('filter-type').value;
   const fs = document.getElementById('filter-status').value;
-  const active = activeItems();
+  const active = shelfItems();
   let shown = active.filter(i =>
     (!ft || i.type === ft) &&
     (!fs || i.status === fs) &&
@@ -879,7 +920,7 @@ function parseTime(q) {
 function runMood() {
   const q = document.getElementById('mood-input').value.trim().toLowerCase();
   const resultsEl = document.getElementById('mood-results');
-  const active = activeItems();
+  const active = shelfItems();
   if (!active.length) {
     resultsEl.innerHTML = `<div class="empty"><div class="big">🌱</div><p>Add some items to your shelf first, then I can make suggestions!</p></div>`;
     return;
@@ -1227,23 +1268,56 @@ function renderNews() {
   } else {
     html += `<div class="empty"><div class="big">🔕</div><p>Nothing new right now. Tick 🔔 on things when you finish them (or via ✏️ edit) and news about them lands here.</p></div>`;
   }
+  html += `<div class="section-label" style="display:flex; justify-content:space-between; align-items:center; gap:8px">
+    <span>What I'm watching for you</span>
+    <button class="btn-quiet" onclick="toggleAddWatch(true)">➕ add a watch</button>
+  </div>`;
   const watching = activeItems().filter(i => i.notify);
   if (watching.length) {
-    html += `<div class="section-label">What I'm watching for you</div>` +
-      watching.map(i => {
+    html += watching.map(i => {
         const s = watchSource(i);
         return `<div class="card item-card">
         <div class="item-emoji">${s.auto ? '🔭' : '🔍'}</div>
         <div class="item-body">
           <p class="item-title">${esc(s.what)}</p>
-          <div class="item-meta">from "${esc(i.title)}" · ${s.where}</div>
+          <div class="item-meta">${i.watchOnly ? s.where : `from "${esc(i.title)}" · ${s.where}`}</div>
         </div>
         <div class="item-actions">
           <button onclick="window.open('https://www.google.com/search?q=' + encodeURIComponent('${esc(s.what).replace(/'/g, "\\'")} new ${yrNow()}'), '_blank')">🔍 search</button>
+          ${i.watchOnly ? `<button class="btn-danger" onclick="deleteWatch('${i.id}')">🗑 stop</button>` : ''}
         </div>
       </div>`; }).join('');
+  } else {
+    html += `<div class="empty" style="padding:14px"><p>Nothing being watched yet — tap ➕ add a watch, or tick 🔔 when finishing something.</p></div>`;
   }
   el.innerHTML = html;
+}
+
+function toggleAddWatch(show) {
+  const f = document.getElementById('add-watch-form');
+  f.style.display = show ? 'block' : 'none';
+  if (show) { document.getElementById('watch-words').value = ''; setChoice('watch-kind', 'book'); document.getElementById('watch-words').focus(); }
+}
+function saveWatch() {
+  const words = document.getElementById('watch-words').value.trim();
+  if (!words) { toast('Type some words to watch first 🙂'); return; }
+  const kind = document.getElementById('watch-kind').dataset.value;
+  items.push({ id: crypto.randomUUID(), created: Date.now(), updated: Date.now(),
+    title: words, type: kind, platform: null, status: 'want', format: 'digital',
+    effort: 'low', time: 15, tags: [], notes: '', releaseDate: null, rating: 0,
+    notify: true, notifyWords: words, watchOnly: true });
+  persist();
+  toggleAddWatch(false);
+  renderNews();
+  toast('Watching "' + words + '" 🔭');
+  checkReleases(true);   // instant gratification: check the new watch right away
+}
+function deleteWatch(id) {
+  const it = items.find(i => i.id === id);
+  if (!it || !confirm(`Stop watching "${it.notifyWords || it.title}"?`)) return;
+  it.deleted = true; it.updated = Date.now();
+  persist(); renderNews(); updateNewsBadge();
+  toast('Watch removed');
 }
 function yrNow() { return new Date().getFullYear(); }
 
@@ -1263,6 +1337,63 @@ function addFromAlert(key) {
   dismissAlert(key);
   editItem(id);   // straight into the edit page so she can complete the details now
   toast('Added — fill in the details 👇');
+}
+
+/* ================= stats (from the "this one" choice log) ================= */
+const RANGE_LABEL = { 7:'the last 7 days', 30:'the last 30 days', 90:'the last 90 days', 365:'the last year', 0:'all time' };
+
+function renderStats() {
+  const el = document.getElementById('stats-content');
+  if (!el) return;
+  const days = parseInt(document.getElementById('stats-range').dataset.value);
+  const cutoff = days ? Date.now() - days * 24 * 3600 * 1000 : 0;
+  const inRange = choices.filter(c => c.ts >= cutoff);
+
+  if (!inRange.length) {
+    el.innerHTML = `<div class="empty"><div class="big">📊</div>
+      <p>No ▶ this one! taps in ${RANGE_LABEL[days]} yet. Every time you pick something, it counts here.</p></div>`;
+    return;
+  }
+  const total = inRange.length;
+
+  // by type
+  const byType = {};
+  inRange.forEach(c => { const t = c.type || 'other'; byType[t] = (byType[t] || 0) + 1; });
+  const types = Object.entries(byType).sort((a, b) => b[1] - a[1]);
+  const maxType = types[0][1];
+
+  // by item (title as recorded at the time of the tap)
+  const byItem = {};
+  inRange.forEach(c => {
+    const k = c.id;
+    if (!byItem[k]) byItem[k] = { n: 0, title: c.title || '(unknown)', type: c.type || 'other' };
+    byItem[k].n++;
+  });
+  const top = Object.values(byItem).sort((a, b) => b.n - a.n).slice(0, 8);
+  const maxItem = top[0].n;
+
+  const pct = n => Math.round(n / total * 100);
+  el.innerHTML = `
+    <p class="stat-total">${total} session${total === 1 ? '' : 's'} in ${RANGE_LABEL[days]}</p>
+    <div class="card">
+      <div class="section-label" style="margin-top:2px">What you did, by type</div>
+      ${types.map(([t, n]) => `<div class="stat-row">
+        <span class="stat-label">${TYPE_EMOJI[t] || '✨'} ${esc(TYPE_LABEL[t] || t)}</span>
+        <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${Math.round(n / maxType * 100)}%"></div></div>
+        <span class="stat-count">${n} · ${pct(n)}%</span>
+      </div>`).join('')}
+    </div>
+    <div class="card">
+      <div class="section-label" style="margin-top:2px">Your top picks</div>
+      ${top.map(i => `<div class="stat-row">
+        <span class="stat-label">${TYPE_EMOJI[i.type] || '✨'}</span>
+        <div style="flex:1; min-width:0">
+          <div style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">${esc(i.title)}</div>
+          <div class="stat-bar-track" style="margin-top:3px"><div class="stat-bar-fill" style="width:${Math.round(i.n / maxItem * 100)}%"></div></div>
+        </div>
+        <span class="stat-count">${i.n} session${i.n === 1 ? '' : 's'}</span>
+      </div>`).join('')}
+    </div>`;
 }
 
 /* ================= theme (light / dark) ================= */
@@ -1294,7 +1425,8 @@ function toast(msg) {
 
 load();
 loadAlerts();
-showScreen(activeItems().length ? 'mood' : 'list');
+setChoice('stats-range', '30');
+showScreen(shelfItems().length ? 'mood' : 'list');
 renderList();
 renderTagSuggestions();
 applyTheme();
